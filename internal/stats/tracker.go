@@ -159,11 +159,21 @@ func GetAllClientStats(since time.Time) ([]Stats, error) {
 	}
 
 	rows, err := db.Query(
-		`SELECT client_id, COALESCE(MAX(client_name), ''), COALESCE(MAX(device_id), ''), COALESCE(MAX(device_name), ''),
+		`SELECT
+		        CASE
+		            WHEN COALESCE(client_name, '') <> '' THEN 'name:' || LOWER(client_name)
+		            ELSE client_id
+		        END AS client_key,
+		        COALESCE(MAX(client_name), ''),
+		        '' AS device_id,
+		        CASE
+		            WHEN COUNT(DISTINCT NULLIF(device_id, '')) > 1 THEN '多设备'
+		            ELSE ''
+		        END AS device_name,
 		        COALESCE(SUM(bytes_in), 0), COALESCE(SUM(bytes_out), 0), COUNT(*)
 		 FROM traffic_stats
-		 WHERE timestamp >= ? AND client_id <> ''
-		 GROUP BY client_id
+		 WHERE timestamp >= ? AND (client_id <> '' OR COALESCE(client_name, '') <> '')
+		 GROUP BY client_key
 		 ORDER BY COALESCE(SUM(bytes_out), 0) DESC`,
 		since,
 	)
@@ -221,7 +231,7 @@ func GetAllUserStats(since time.Time) ([]Stats, error) {
 	rows, err := db.Query(
 		`SELECT user_id, COALESCE(SUM(bytes_in), 0), COALESCE(SUM(bytes_out), 0), COUNT(*)
 		 FROM traffic_stats
-		 WHERE timestamp >= ?
+		 WHERE timestamp >= ? AND user_id <> ''
 		 GROUP BY user_id`,
 		since,
 	)

@@ -12,9 +12,9 @@ import (
 )
 
 type UserInfo struct {
-	ID       string `json:"Id"`
-	Name     string `json:"Name"`
-	IsAdmin  bool   `json:"Policy:IsAdministrator"`
+	ID      string `json:"Id"`
+	Name    string `json:"Name"`
+	IsAdmin bool   `json:"Policy:IsAdministrator"`
 }
 
 type ClientInfo struct {
@@ -24,6 +24,7 @@ type ClientInfo struct {
 	DeviceID   string `json:"device_id"`
 	DeviceName string `json:"device_name"`
 	UserAgent  string `json:"user_agent"`
+	UserID     string `json:"user_id"`
 	Token      string `json:"-"`
 }
 
@@ -47,6 +48,10 @@ func NewIdentifier() *Identifier {
 
 // IdentifyUser extracts user info from request
 func (i *Identifier) IdentifyUser(r *http.Request) (*UserInfo, error) {
+	if userID := i.extractUserID(r); userID != "" {
+		return &UserInfo{ID: userID}, nil
+	}
+
 	// Try to get token from various sources
 	token := i.extractToken(r)
 	if token == "" {
@@ -101,14 +106,15 @@ func (i *Identifier) IdentifyClient(r *http.Request) *ClientInfo {
 		clientName = detectClientNameFromUserAgent(userAgent)
 	}
 
+	userID := i.extractUserID(r)
 	clientID := ""
 	switch {
-	case deviceID != "":
-		clientID = "device:" + deviceID
 	case clientName != "":
-		clientID = "client:" + strings.ToLower(clientName)
+		clientID = "client:" + normalizeClientKey(clientName)
+	case deviceID != "":
+		clientID = "device:" + normalizeClientKey(deviceID)
 	case userAgent != "":
-		clientID = "ua:" + userAgent
+		clientID = "ua:" + normalizeClientKey(userAgent)
 	}
 
 	if clientID == "" && deviceName == "" {
@@ -124,6 +130,7 @@ func (i *Identifier) IdentifyClient(r *http.Request) *ClientInfo {
 		DeviceID:   deviceID,
 		DeviceName: deviceName,
 		UserAgent:  userAgent,
+		UserID:     userID,
 		Token:      i.extractToken(r),
 	}
 }
@@ -134,14 +141,52 @@ func (i *Identifier) extractToken(r *http.Request) string {
 		return token
 	}
 
+	if token := r.Header.Get("X-MediaBrowser-Token"); token != "" {
+		return token
+	}
+
 	// Check URL parameter
 	if token := r.URL.Query().Get("X-Emby-Token"); token != "" {
+		return token
+	}
+
+	if token := r.URL.Query().Get("api_key"); token != "" {
+		return token
+	}
+
+	authValues := parseEmbyAuthorization(r.Header.Get("X-Emby-Authorization"))
+	if token := authValues["Token"]; token != "" {
+		return token
+	}
+
+	if token := authValues["ApiKey"]; token != "" {
 		return token
 	}
 
 	// Check DeviceId as fallback
 	if deviceId := r.Header.Get("X-Emby-Device-Id"); deviceId != "" {
 		return deviceId
+	}
+
+	return ""
+}
+
+func (i *Identifier) extractUserID(r *http.Request) string {
+	if r == nil {
+		return ""
+	}
+
+	if userID := strings.TrimSpace(r.Header.Get("X-Emby-User-Id")); userID != "" {
+		return userID
+	}
+
+	if userID := strings.TrimSpace(r.URL.Query().Get("UserId")); userID != "" {
+		return userID
+	}
+
+	authValues := parseEmbyAuthorization(r.Header.Get("X-Emby-Authorization"))
+	if userID := strings.TrimSpace(authValues["UserId"]); userID != "" {
+		return userID
 	}
 
 	return ""
@@ -319,4 +364,10 @@ func detectClientNameFromUserAgent(userAgent string) string {
 	}
 
 	return name
+}
+
+func normalizeClientKey(value string) string {
+	value = strings.TrimSpace(strings.ToLower(value))
+	value = strings.ReplaceAll(value, " ", "-")
+	return value
 }
