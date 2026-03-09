@@ -34,11 +34,16 @@ type CachedUser struct {
 }
 
 type sessionInfo struct {
-	UserID     string `json:"UserId"`
-	UserName   string `json:"UserName"`
-	Client     string `json:"Client"`
-	DeviceID   string `json:"DeviceId"`
-	DeviceName string `json:"DeviceName"`
+	UserID           string `json:"UserId"`
+	UserName         string `json:"UserName"`
+	Client           string `json:"Client"`
+	DeviceID         string `json:"DeviceId"`
+	DeviceName       string `json:"DeviceName"`
+	NowPlayingItemID string `json:"NowPlayingItemId"`
+	PlayState        struct {
+		PositionTicks int64 `json:"PositionTicks"`
+		IsPaused      bool  `json:"IsPaused"`
+	} `json:"PlayState"`
 }
 
 type Identifier struct {
@@ -57,6 +62,13 @@ func NewIdentifier() *Identifier {
 // IdentifyUser extracts user info from request
 func (i *Identifier) IdentifyUser(r *http.Request) (*UserInfo, error) {
 	if userID := i.extractUserID(r); userID != "" {
+		if user := i.getFromCache("user:" + userID); user != nil {
+			return user, nil
+		}
+		if user, err := i.queryUserByID(userID); err == nil && user != nil {
+			i.addToCache("user:"+userID, user)
+			return user, nil
+		}
 		return &UserInfo{ID: userID}, nil
 	}
 
@@ -225,6 +237,12 @@ func (i *Identifier) addToCache(token string, user *UserInfo) {
 		User:      user,
 		ExpiresAt: time.Now().Add(5 * time.Minute),
 	}
+	if user != nil && user.ID != "" {
+		i.cache["user:"+user.ID] = &CachedUser{
+			User:      user,
+			ExpiresAt: time.Now().Add(5 * time.Minute),
+		}
+	}
 }
 
 func (i *Identifier) queryEmbyAPI(token string, client *ClientInfo) (*UserInfo, error) {
@@ -260,6 +278,40 @@ func (i *Identifier) queryEmbyAPI(token string, client *ClientInfo) (*UserInfo, 
 		return nil, err
 	}
 
+	return &user, nil
+}
+
+func (i *Identifier) queryUserByID(userID string) (*UserInfo, error) {
+	cfg := config.Get()
+	if cfg == nil {
+		return nil, fmt.Errorf("config not loaded")
+	}
+	if strings.TrimSpace(userID) == "" || strings.TrimSpace(cfg.Emby.APIKey) == "" {
+		return nil, nil
+	}
+
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/Users/%s?api_key=%s", cfg.Emby.URL, userID, cfg.Emby.APIKey), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := i.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("emby user api returned status %d", resp.StatusCode)
+	}
+
+	var user UserInfo
+	if err := json.NewDecoder(resp.Body).Decode(&user); err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(user.ID) == "" {
+		user.ID = userID
+	}
 	return &user, nil
 }
 
@@ -328,6 +380,55 @@ func (i *Identifier) querySessionUser(baseURL, token string, client *ClientInfo)
 	}
 
 	return nil, nil
+}
+
+func (i *Identifier) GetActiveSessionUsers() (map[string]UserInfo, error) {
+	cfg := config.Get()
+	if cfg == nil {
+		return nil, fmt.Errorf("config not loaded")
+	}
+	if strings.TrimSpace(cfg.Emby.APIKey) == "" {
+		return map[string]UserInfo{}, nil
+	}
+
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/Sessions?api_key=%s", cfg.Emby.URL, cfg.Emby.APIKey), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := i.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("emby sessions api returned status %d", resp.StatusCode)
+	}
+
+	var sessions []sessionInfo
+	if err := json.NewDecoder(resp.Body).Decode(&sessions); err != nil {
+		return nil, err
+	}
+
+	active := make(map[string]UserInfo)
+	for _, session := range sessions {
+		if strings.TrimSpace(session.UserID) == "" {
+			continue
+		}
+		if strings.TrimSpace(session.NowPlayingItemID) == "" && session.PlayState.PositionTicks <= 0 {
+			continue
+		}
+		if session.PlayState.IsPaused {
+			continue
+		}
+		active[session.UserID] = UserInfo{
+			ID:   session.UserID,
+			Name: session.UserName,
+		}
+	}
+
+	return active, nil
 }
 
 func sameSession(session sessionInfo, client *ClientInfo) bool {

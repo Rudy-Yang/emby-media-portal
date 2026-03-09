@@ -77,6 +77,7 @@ func main() {
 		// User management
 		userHandler := handler.NewUserHandler(identifier, rulesManager, limiterManager)
 		api.GET("/users", userHandler.ListUsers)
+		api.GET("/users/active", userHandler.ListActiveUsers)
 		api.POST("/users/sync", userHandler.SyncUsers)
 		api.GET("/users/:id", userHandler.GetUserRule)
 		api.PUT("/users/:id", userHandler.UpdateUserRule)
@@ -94,6 +95,7 @@ func main() {
 
 		clientHandler := handler.NewClientHandler(rulesManager, limiterManager)
 		api.GET("/clients", clientHandler.ListClients)
+		api.GET("/clients/discovered", clientHandler.ListDiscoveredClients)
 		api.POST("/clients", clientHandler.SaveClientRule)
 		api.GET("/clients/:id", clientHandler.GetClientRule)
 		api.PUT("/clients/:id", clientHandler.SaveClientRule)

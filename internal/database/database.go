@@ -78,6 +78,7 @@ func createTables() error {
 			client_name TEXT,
 			device_id TEXT,
 			device_name TEXT,
+			user_agent TEXT,
 			server_id TEXT,
 			request_path TEXT,
 			traffic_kind TEXT DEFAULT '',
@@ -98,6 +99,7 @@ func createTables() error {
 		`ALTER TABLE traffic_stats ADD COLUMN client_name TEXT`,
 		`ALTER TABLE traffic_stats ADD COLUMN device_id TEXT`,
 		`ALTER TABLE traffic_stats ADD COLUMN device_name TEXT`,
+		`ALTER TABLE traffic_stats ADD COLUMN user_agent TEXT`,
 		`ALTER TABLE traffic_stats ADD COLUMN request_path TEXT`,
 		`ALTER TABLE traffic_stats ADD COLUMN traffic_kind TEXT DEFAULT ''`,
 	}

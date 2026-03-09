@@ -3,10 +3,10 @@ package stats
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
-	"strings"
 
 	"emby-media-portal/internal/database"
 )
@@ -19,16 +19,19 @@ const publicRequestKey = "__public__"
 
 // TrafficRecord represents a single traffic record
 type TrafficRecord struct {
-	UserID     string
-	ClientID   string
-	ClientName string
-	DeviceID   string
-	DeviceName string
-	ServerID   string
+	UserID      string
+	UserName    string
+	ClientID    string
+	ClientName  string
+	DeviceID    string
+	DeviceName  string
+	UserAgent   string
+	ServerID    string
 	RequestPath string
 	TrafficKind string
-	BytesIn    int64
-	BytesOut   int64
+	BytesIn     int64
+	BytesOut    int64
+	StartedAt   time.Time
 }
 
 // Stats represents aggregated statistics
@@ -54,6 +57,7 @@ type TrafficEntry struct {
 	ClientName  string `json:"client_name"`
 	DeviceID    string `json:"device_id"`
 	DeviceName  string `json:"device_name"`
+	UserAgent   string `json:"user_agent"`
 	ServerID    string `json:"server_id"`
 	RequestPath string `json:"request_path"`
 	TrafficKind string `json:"traffic_kind"`
@@ -61,14 +65,42 @@ type TrafficEntry struct {
 	BytesOut    int64  `json:"bytes_out"`
 }
 
+type TrafficEntriesPage struct {
+	Items    []TrafficEntry `json:"items"`
+	Total    int64          `json:"total"`
+	Page     int            `json:"page"`
+	PageSize int            `json:"page_size"`
+}
+
+type ObservedClient struct {
+	ClientName   string `json:"client_name"`
+	DeviceName   string `json:"device_name"`
+	UserAgent    string `json:"user_agent"`
+	LastSeen     string `json:"last_seen"`
+	RequestCount int64  `json:"request_count"`
+}
+
+type ActiveUserTraffic struct {
+	UserID      string `json:"user_id"`
+	UserName    string `json:"user_name,omitempty"`
+	DownloadBps int64  `json:"download_bps"`
+}
+
+type CurrentTransferRates struct {
+	UploadBps       int64 `json:"upload_bps"`
+	DownloadBps     int64 `json:"download_bps"`
+	ActiveUploads   int   `json:"active_uploads"`
+	ActiveDownloads int   `json:"active_downloads"`
+}
+
 // Tracker tracks traffic statistics
 type Tracker struct {
-	pendingRecords []TrafficRecord
+	pendingRecords  []TrafficRecord
 	activeTransfers map[string]TrafficRecord
-	mu             sync.Mutex
-	flushInterval  time.Duration
-	stopCh         chan struct{}
-	nextTransferID uint64
+	mu              sync.Mutex
+	flushInterval   time.Duration
+	stopCh          chan struct{}
+	nextTransferID  uint64
 }
 
 var defaultTracker *Tracker
@@ -76,10 +108,10 @@ var defaultTracker *Tracker
 // NewTracker creates a new stats tracker
 func NewTracker(flushInterval time.Duration) *Tracker {
 	t := &Tracker{
-		pendingRecords: make([]TrafficRecord, 0),
+		pendingRecords:  make([]TrafficRecord, 0),
 		activeTransfers: make(map[string]TrafficRecord),
-		flushInterval:  flushInterval,
-		stopCh:         make(chan struct{}),
+		flushInterval:   flushInterval,
+		stopCh:          make(chan struct{}),
 	}
 	defaultTracker = t
 
@@ -88,28 +120,30 @@ func NewTracker(flushInterval time.Duration) *Tracker {
 }
 
 // Record records traffic for a request
-func (t *Tracker) Record(userID, clientID, clientName, deviceID, deviceName, serverID, requestPath, trafficKind string, bytesIn, bytesOut int64) {
+func (t *Tracker) Record(userID, userName, clientID, clientName, deviceID, deviceName, userAgent, serverID, requestPath, trafficKind string, bytesIn, bytesOut int64) {
 	if bytesIn == 0 && bytesOut == 0 {
 		return
 	}
 
 	t.mu.Lock()
 	t.pendingRecords = append(t.pendingRecords, TrafficRecord{
-		UserID:     userID,
-		ClientID:   clientID,
-		ClientName: clientName,
-		DeviceID:   deviceID,
-		DeviceName: deviceName,
-		ServerID:   serverID,
+		UserID:      userID,
+		UserName:    userName,
+		ClientID:    clientID,
+		ClientName:  clientName,
+		DeviceID:    deviceID,
+		DeviceName:  deviceName,
+		UserAgent:   userAgent,
+		ServerID:    serverID,
 		RequestPath: requestPath,
 		TrafficKind: trafficKind,
-		BytesIn:    bytesIn,
-		BytesOut:   bytesOut,
+		BytesIn:     bytesIn,
+		BytesOut:    bytesOut,
 	})
 	t.mu.Unlock()
 }
 
-func (t *Tracker) StartTransfer(userID, clientID, clientName, deviceID, deviceName, serverID, requestPath, trafficKind string, bytesIn int64) string {
+func (t *Tracker) StartTransfer(userID, userName, clientID, clientName, deviceID, deviceName, userAgent, serverID, requestPath, trafficKind string, bytesIn int64) string {
 	if t == nil {
 		return ""
 	}
@@ -118,15 +152,18 @@ func (t *Tracker) StartTransfer(userID, clientID, clientName, deviceID, deviceNa
 	t.mu.Lock()
 	t.activeTransfers[id] = TrafficRecord{
 		UserID:      userID,
+		UserName:    userName,
 		ClientID:    clientID,
 		ClientName:  clientName,
 		DeviceID:    deviceID,
 		DeviceName:  deviceName,
+		UserAgent:   userAgent,
 		ServerID:    serverID,
 		RequestPath: requestPath,
 		TrafficKind: trafficKind,
 		BytesIn:     bytesIn,
 		BytesOut:    0,
+		StartedAt:   time.Now(),
 	}
 	t.mu.Unlock()
 	return id
@@ -192,8 +229,8 @@ func (t *Tracker) flush() {
 
 	stmt, err := tx.Prepare(
 		`INSERT INTO traffic_stats
-		 (user_id, client_id, client_name, device_id, device_name, server_id, request_path, traffic_kind, bytes_in, bytes_out)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		 (user_id, client_id, client_name, device_id, device_name, user_agent, server_id, request_path, traffic_kind, bytes_in, bytes_out)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 	)
 	if err != nil {
 		tx.Rollback()
@@ -202,7 +239,7 @@ func (t *Tracker) flush() {
 	defer stmt.Close()
 
 	for _, r := range records {
-		stmt.Exec(r.UserID, r.ClientID, r.ClientName, r.DeviceID, r.DeviceName, r.ServerID, r.RequestPath, r.TrafficKind, r.BytesIn, r.BytesOut)
+		stmt.Exec(r.UserID, r.ClientID, r.ClientName, r.DeviceID, r.DeviceName, r.UserAgent, r.ServerID, r.RequestPath, r.TrafficKind, r.BytesIn, r.BytesOut)
 	}
 
 	tx.Commit()
@@ -217,6 +254,20 @@ func (t *Tracker) snapshotLiveRecords() []TrafficRecord {
 
 	records := make([]TrafficRecord, 0, len(t.pendingRecords)+len(t.activeTransfers))
 	records = append(records, t.pendingRecords...)
+	for _, record := range t.activeTransfers {
+		records = append(records, record)
+	}
+	return records
+}
+
+func (t *Tracker) snapshotActiveTransfers() []TrafficRecord {
+	if t == nil {
+		return nil
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	records := make([]TrafficRecord, 0, len(t.activeTransfers))
 	for _, record := range t.activeTransfers {
 		records = append(records, record)
 	}
@@ -283,6 +334,9 @@ func userDisplayName(record TrafficRecord) string {
 	case unknownUserKey:
 		return "未知用户"
 	default:
+		if strings.TrimSpace(record.UserName) != "" {
+			return record.UserName
+		}
 		return record.UserID
 	}
 }
@@ -546,7 +600,7 @@ func GetAllUserStats(since time.Time) ([]Stats, error) {
 		 WHERE t.timestamp >= ?
 		 GROUP BY grouped_user_id
 		 ORDER BY COALESCE(SUM(t.bytes_out), 0) DESC`,
-			publicRequestKey, unknownUserKey, since,
+		publicRequestKey, unknownUserKey, since,
 	)
 	if err != nil {
 		return nil, err
@@ -636,13 +690,22 @@ func CleanOldStats(olderThan time.Duration) error {
 	return err
 }
 
-func ListTrafficEntries(since time.Time, limit int) ([]TrafficEntry, error) {
+func ListTrafficEntries(since time.Time, page, pageSize int) (*TrafficEntriesPage, error) {
 	db := database.Get()
 	if db == nil {
 		return nil, ErrDatabaseNotAvailable
 	}
-	if limit <= 0 || limit > 500 {
-		limit = 200
+	if page <= 0 {
+		page = 1
+	}
+	if pageSize <= 0 || pageSize > 200 {
+		pageSize = 50
+	}
+	offset := (page - 1) * pageSize
+
+	var total int64
+	if err := db.QueryRow(`SELECT COUNT(*) FROM traffic_stats WHERE timestamp >= ?`, since).Scan(&total); err != nil {
+		return nil, err
 	}
 
 	rows, err := db.Query(
@@ -672,6 +735,7 @@ func ListTrafficEntries(since time.Time, limit int) ([]TrafficEntry, error) {
 		     COALESCE(t.client_name, ''),
 		     COALESCE(t.device_id, ''),
 		     COALESCE(t.device_name, ''),
+		     COALESCE(t.user_agent, ''),
 		     COALESCE(t.server_id, ''),
 		     COALESCE(t.request_path, ''),
 		     COALESCE(t.traffic_kind, ''),
@@ -681,8 +745,8 @@ func ListTrafficEntries(since time.Time, limit int) ([]TrafficEntry, error) {
 		 LEFT JOIN users u ON u.id = t.user_id
 		 WHERE t.timestamp >= ?
 		 ORDER BY t.timestamp DESC, t.id DESC
-		 LIMIT ?`,
-		since, limit,
+		 LIMIT ? OFFSET ?`,
+		since, pageSize, offset,
 	)
 	if err != nil {
 		return nil, err
@@ -701,6 +765,7 @@ func ListTrafficEntries(since time.Time, limit int) ([]TrafficEntry, error) {
 			&entry.ClientName,
 			&entry.DeviceID,
 			&entry.DeviceName,
+			&entry.UserAgent,
 			&entry.ServerID,
 			&entry.RequestPath,
 			&entry.TrafficKind,
@@ -712,7 +777,175 @@ func ListTrafficEntries(since time.Time, limit int) ([]TrafficEntry, error) {
 		entries = append(entries, entry)
 	}
 
-	return entries, nil
+	return &TrafficEntriesPage{
+		Items:    entries,
+		Total:    total,
+		Page:     page,
+		PageSize: pageSize,
+	}, nil
+}
+
+func ListObservedClients(limit int) ([]ObservedClient, error) {
+	db := database.Get()
+	if db == nil {
+		return nil, ErrDatabaseNotAvailable
+	}
+	if limit <= 0 || limit > 100 {
+		limit = 24
+	}
+
+	rows, err := db.Query(
+		`SELECT
+		     COALESCE(MAX(NULLIF(client_name, '')), MAX(NULLIF(device_name, '')), ''),
+		     COALESCE(MAX(NULLIF(device_name, '')), ''),
+		     user_agent,
+		     MAX(timestamp),
+		     COUNT(*)
+		 FROM traffic_stats
+		 WHERE COALESCE(TRIM(user_agent), '') <> ''
+		 GROUP BY user_agent
+		 ORDER BY MAX(timestamp) DESC, COUNT(*) DESC
+		 LIMIT ?`,
+		limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var observed []ObservedClient
+	for rows.Next() {
+		var item ObservedClient
+		if err := rows.Scan(&item.ClientName, &item.DeviceName, &item.UserAgent, &item.LastSeen, &item.RequestCount); err != nil {
+			return nil, err
+		}
+		observed = append(observed, item)
+	}
+
+	return observed, nil
+}
+
+func ListActiveTrafficUsers(window time.Duration, minBytesOut int64) ([]string, error) {
+	db := database.Get()
+	if db == nil {
+		return nil, ErrDatabaseNotAvailable
+	}
+	if window <= 0 {
+		window = 12 * time.Second
+	}
+	if minBytesOut <= 0 {
+		minBytesOut = 256 * 1024
+	}
+
+	active := make(map[string]struct{})
+	cutoff := time.Now().Add(-window)
+
+	rows, err := db.Query(
+		`SELECT user_id
+		 FROM traffic_stats
+		 WHERE timestamp >= ?
+		   AND COALESCE(TRIM(user_id), '') <> ''
+		   AND COALESCE(traffic_kind, '') <> 'public'
+		 GROUP BY user_id
+		 HAVING COALESCE(SUM(bytes_out), 0) >= ?`,
+		cutoff, minBytesOut,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var userID string
+		if err := rows.Scan(&userID); err != nil {
+			return nil, err
+		}
+		if strings.TrimSpace(userID) != "" {
+			active[userID] = struct{}{}
+		}
+	}
+
+	for _, record := range defaultTracker.snapshotLiveRecords() {
+		if strings.TrimSpace(record.UserID) == "" || strings.TrimSpace(record.TrafficKind) == "public" {
+			continue
+		}
+		if record.BytesOut >= minBytesOut/4 {
+			active[record.UserID] = struct{}{}
+		}
+	}
+
+	userIDs := make([]string, 0, len(active))
+	for userID := range active {
+		userIDs = append(userIDs, userID)
+	}
+	return userIDs, nil
+}
+
+func ListActiveUserTraffic(minBytesPerSecond int64) ([]ActiveUserTraffic, error) {
+	if minBytesPerSecond <= 0 {
+		minBytesPerSecond = 32 * 1024
+	}
+
+	activeTransfers := defaultTracker.snapshotActiveTransfers()
+	if len(activeTransfers) == 0 {
+		return []ActiveUserTraffic{}, nil
+	}
+
+	byUser := make(map[string]ActiveUserTraffic)
+	now := time.Now()
+	for _, record := range activeTransfers {
+		if strings.TrimSpace(record.UserID) == "" || strings.TrimSpace(record.TrafficKind) == "public" {
+			continue
+		}
+		elapsed := now.Sub(record.StartedAt).Seconds()
+		if elapsed < 1 {
+			elapsed = 1
+		}
+		speed := int64(float64(record.BytesOut) / elapsed)
+		if speed < minBytesPerSecond {
+			continue
+		}
+		item := byUser[record.UserID]
+		item.UserID = record.UserID
+		if strings.TrimSpace(item.UserName) == "" {
+			item.UserName = strings.TrimSpace(record.UserName)
+		}
+		item.DownloadBps += speed
+		byUser[record.UserID] = item
+	}
+
+	users := make([]ActiveUserTraffic, 0, len(byUser))
+	for _, item := range byUser {
+		users = append(users, item)
+	}
+	return users, nil
+}
+
+func GetCurrentTransferRates() CurrentTransferRates {
+	activeTransfers := defaultTracker.snapshotActiveTransfers()
+	if len(activeTransfers) == 0 {
+		return CurrentTransferRates{}
+	}
+
+	now := time.Now()
+	var rates CurrentTransferRates
+	for _, record := range activeTransfers {
+		elapsed := now.Sub(record.StartedAt).Seconds()
+		if elapsed < 1 {
+			elapsed = 1
+		}
+
+		if record.BytesIn > 0 {
+			rates.UploadBps += int64(float64(record.BytesIn) / elapsed)
+			rates.ActiveUploads++
+		}
+		if record.BytesOut > 0 {
+			rates.DownloadBps += int64(float64(record.BytesOut) / elapsed)
+			rates.ActiveDownloads++
+		}
+	}
+
+	return rates
 }
 
 func DeleteTrafficEntry(id int64) error {

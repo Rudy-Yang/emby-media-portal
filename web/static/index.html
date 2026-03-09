@@ -173,6 +173,10 @@
       margin-bottom: 18px;
     }
 
+    .overview-stats-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
     .two {
       display: grid;
       grid-template-columns: 1.25fr .75fr;
@@ -220,7 +224,11 @@
     }
 
     .inline-hint-wrap input {
-      padding-right: 360px;
+      padding-right: 12px;
+    }
+
+    .inline-hint-wrap.has-hint input {
+      padding-right: clamp(132px, 28%, 240px);
     }
 
     .inline-hint {
@@ -228,7 +236,7 @@
       right: 10px;
       top: 50%;
       transform: translateY(-50%);
-      max-width: min(420px, calc(100% - 20px));
+      max-width: clamp(110px, 24vw, 220px);
       padding: 5px 10px;
       border-radius: 999px;
       background: rgba(33, 150, 255, 0.18);
@@ -237,8 +245,8 @@
       font-size: 11px;
       line-height: 1.2;
       white-space: nowrap;
-      overflow: visible;
-      text-overflow: clip;
+      overflow: hidden;
+      text-overflow: ellipsis;
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       pointer-events: none;
       opacity: 0;
@@ -257,9 +265,13 @@
 
     .chart-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 16px;
       margin: 14px 0 18px;
+    }
+
+    #traffic .two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .chart-card {
@@ -267,10 +279,37 @@
       border-radius: 18px;
       border: 1px solid rgba(163, 189, 255, 0.14);
       background: rgba(9, 18, 34, 0.62);
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 12px;
     }
 
     .chart-card h3 {
-      margin-bottom: 12px;
+      margin: 0;
+    }
+
+    .chart-card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .chart-top-select {
+      min-width: 88px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(120, 157, 241, 0.22);
+      background: rgba(8, 20, 41, 0.82);
+      color: #d9e8ff;
+      font-size: 12px;
+      font-weight: 700;
+      outline: none;
+    }
+
+    .chart-top-select:focus {
+      border-color: rgba(92, 166, 255, 0.78);
+      box-shadow: 0 0 0 3px rgba(45, 142, 255, 0.14);
     }
 
     .chart-shell {
@@ -278,6 +317,7 @@
       grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
       gap: 12px;
       align-items: center;
+      min-height: 360px;
     }
 
     .pie-wrap {
@@ -386,7 +426,7 @@
       display: grid;
       gap: 8px;
       align-content: start;
-      max-height: 240px;
+      max-height: 280px;
       overflow: auto;
       padding-right: 4px;
     }
@@ -498,32 +538,28 @@
       content: "↓";
     }
 
+    .clients-rules-table {
+      width: 100%;
+      table-layout: fixed;
+    }
+
     .clients-rules-table th:nth-child(1),
     .clients-rules-table td:nth-child(1) {
-      width: 16%;
+      width: 38%;
     }
 
     .clients-rules-table th:nth-child(2),
-    .clients-rules-table td:nth-child(2) {
-      width: 18%;
-    }
-
+    .clients-rules-table td:nth-child(2),
     .clients-rules-table th:nth-child(3),
     .clients-rules-table td:nth-child(3) {
-      width: 28%;
-    }
-
-    .clients-rules-table th:nth-child(4),
-    .clients-rules-table td:nth-child(4),
-    .clients-rules-table th:nth-child(5),
-    .clients-rules-table td:nth-child(5) {
-      width: 12%;
+      width: 18%;
       white-space: nowrap;
     }
 
-    .clients-rules-table th:nth-child(6),
-    .clients-rules-table td:nth-child(6) {
-      width: 14%;
+    .clients-rules-table th:nth-child(4),
+    .clients-rules-table td:nth-child(4) {
+      width: 26%;
+      min-width: 190px;
     }
 
     .clients-rules-table code {
@@ -537,11 +573,158 @@
 
     .clients-rules-table .actions {
       justify-content: flex-start;
-      flex-wrap: nowrap;
+      flex-wrap: wrap;
+      gap: 8px;
     }
 
     .clients-rules-table .actions .btn {
       white-space: nowrap;
+    }
+
+    .clients-layout {
+      align-items: start;
+    }
+
+    .client-list-card,
+    .client-editor-card {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .client-list-card::before,
+    .client-editor-card::before {
+      content: "";
+      position: absolute;
+      inset: auto -10% 58% auto;
+      width: 220px;
+      height: 220px;
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(57, 137, 255, 0.16), transparent 68%);
+      pointer-events: none;
+    }
+
+    .client-panel-head,
+    .client-editor-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 14px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .client-panel-head p,
+    .client-editor-head p {
+      margin-top: 8px;
+      max-width: 560px;
+    }
+
+    .client-panel-badge {
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(88, 145, 255, 0.26);
+      background: rgba(15, 32, 67, 0.86);
+      color: #bcd8ff;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .client-suggestions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 0 0 12px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .client-suggestion {
+      border: 1px solid rgba(91, 147, 255, 0.22);
+      background: linear-gradient(180deg, rgba(16, 29, 58, 0.94), rgba(9, 18, 36, 0.94));
+      color: #d9e8ff;
+      border-radius: 14px;
+      padding: 10px 12px;
+      display: grid;
+      gap: 5px;
+      min-width: 180px;
+      max-width: 280px;
+      cursor: pointer;
+      transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+      min-width: 0;
+    }
+
+    .client-suggestion:hover {
+      transform: translateY(-1px);
+      border-color: rgba(112, 166, 255, 0.42);
+      box-shadow: 0 14px 28px rgba(6, 17, 41, 0.22);
+    }
+
+    .client-suggestion-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: #f2f7ff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .client-suggestion-meta {
+      font-size: 11px;
+      color: #8fa6d0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .client-limits-table {
+      margin-top: 6px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .client-limits-table tbody tr {
+      transition: background-color .18s ease;
+    }
+
+    .client-limits-table tbody tr:hover {
+      background: rgba(48, 97, 184, 0.08);
+    }
+
+    .client-rule-title {
+      display: grid;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .client-rule-name {
+      font-size: 16px;
+      font-weight: 700;
+      color: #eef5ff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .client-rule-id {
+      font-size: 11px;
+      color: #8ea4ce;
+    }
+
+    .client-rule-speed {
+      font-size: 16px;
+      font-weight: 700;
+      color: #eef5ff;
+      white-space: nowrap;
+    }
+
+    .client-helper {
+      display: grid;
+      gap: 4px;
+      font-size: 12px;
+      color: #8ea6d3;
+      margin-top: 4px;
     }
 
     code {
@@ -750,6 +933,46 @@
       display: block;
     }
 
+    .traffic-records-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+
+    .traffic-records-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .traffic-records-controls label,
+    .traffic-records-pagination {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .traffic-records-controls select {
+      width: auto;
+      min-width: 84px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(12, 21, 39, 0.92);
+      color: var(--text);
+      outline: none;
+    }
+
+    .traffic-records-pagination .btn {
+      min-width: 72px;
+    }
+
     .record-table td:last-child,
     .record-table th:last-child {
       width: 72px;
@@ -774,6 +997,71 @@
       word-break: break-word;
     }
 
+    .watching-user {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .watching-user-main {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .watching-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex: 0 0 auto;
+    }
+
+    .watching-status-row {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      min-width: 0;
+    }
+
+    .watching-user-label {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .watching-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      flex: 0 0 auto;
+      background: #3bd671;
+      box-shadow: 0 0 0 4px rgba(59, 214, 113, 0.16);
+    }
+
+    .watching-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: rgba(56, 135, 255, 0.16);
+      border: 1px solid rgba(82, 155, 255, 0.30);
+      color: #d6e8ff;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .watching-pill::before {
+      content: "↓";
+      color: #8fc4ff;
+      font-size: 12px;
+      line-height: 1;
+    }
+
     .toast {
       position: fixed;
       right: 18px;
@@ -795,6 +1083,8 @@
 
     @media (max-width: 900px) {
       .two { grid-template-columns: 1fr; }
+      .chart-grid { grid-template-columns: 1fr; }
+      .overview-stats-grid { grid-template-columns: 1fr 1fr; }
     }
   </style>
 </head>
@@ -837,12 +1127,13 @@
     </div>
 
     <section id="overview" class="section active">
-      <div class="grid">
-        <div class="card"><p class="muted">用户规则</p><h2 id="statUsers">0</h2></div>
-        <div class="card"><p class="muted">客户端规则</p><h2 id="statClients">0</h2></div>
-        <div class="card"><p class="muted">程序内存占用</p><h2 id="statMemory">0 B</h2></div>
+      <div class="grid overview-stats-grid">
+        <div class="card"><p class="muted">规则数（用户 / 客户端）</p><h2 id="statRules">0 / 0</h2></div>
         <div class="card"><p class="muted">24 小时入站</p><h2 id="statIn">0 B</h2></div>
         <div class="card"><p class="muted">24 小时出站</p><h2 id="statOut">0 B</h2></div>
+        <div class="card"><p class="muted">程序内存占用</p><h2 id="statMemory">0 B</h2></div>
+        <div class="card"><p class="muted">实时下载速度</p><h2 id="statLiveUp">0 B/s</h2></div>
+        <div class="card"><p class="muted">实时上传速度</p><h2 id="statLiveDown">0 B/s</h2></div>
       </div>
       <div class="two">
         <div class="card">
@@ -891,7 +1182,7 @@
           <div class="field">
             <label for="userUpload">上传限速</label>
             <div class="input-with-unit">
-              <input id="userUpload" type="number" min="0" step="0.01" value="0">
+              <input id="userUpload" type="number" min="0" step="5" value="0">
               <select id="userUploadUnit">
                 <option value="mbps" selected>Mbps</option>
                 <option value="kbps">Kbps</option>
@@ -902,7 +1193,7 @@
           <div class="field">
             <label for="userDownload">下载限速</label>
             <div class="input-with-unit">
-              <input id="userDownload" type="number" min="0" step="0.01" value="0">
+              <input id="userDownload" type="number" min="0" step="5" value="0">
               <select id="userDownloadUnit">
                 <option value="mbps" selected>Mbps</option>
                 <option value="kbps">Kbps</option>
@@ -926,14 +1217,19 @@
     </section>
 
     <section id="clients" class="section">
-      <div class="two">
-        <div class="card">
-          <h2>按 User-Agent 识别的客户端</h2>
-          <table>
+      <div class="two clients-layout">
+        <div class="card client-list-card">
+          <div class="client-panel-head">
+            <div>
+              <h2>客户端限速规则</h2>
+              <p class="muted">按已识别的 User-Agent 或客户端名称匹配，统一收紧同类客户端流量。</p>
+            </div>
+            <div class="client-panel-badge"><span id="clientObservedCount">0</span> 个已识别候选</div>
+          </div>
+          <div id="clientSuggestions" class="client-suggestions"></div>
+          <table class="clients-rules-table client-limits-table">
             <thead><tr>
-              <th><button class="sort-btn" data-sort-table="clientsTable" data-sort-key="id" onclick="toggleTableSort('clientsTable','id')">规则键</button></th>
               <th><button class="sort-btn" data-sort-table="clientsTable" data-sort-key="name" onclick="toggleTableSort('clientsTable','name')">客户端名称</button></th>
-              <th><button class="sort-btn" data-sort-table="clientsTable" data-sort-key="match_value" onclick="toggleTableSort('clientsTable','match_value')">User-Agent 规则</button></th>
               <th><button class="sort-btn" data-sort-table="clientsTable" data-sort-key="upload_limit" onclick="toggleTableSort('clientsTable','upload_limit')">上传</button></th>
               <th><button class="sort-btn" data-sort-table="clientsTable" data-sort-key="download_limit" onclick="toggleTableSort('clientsTable','download_limit')">下载</button></th>
               <th>操作</th>
@@ -941,14 +1237,21 @@
             <tbody id="clientsTable"></tbody>
           </table>
         </div>
-        <div class="card">
-          <h2 id="clientTitle">新建或编辑客户端 User-Agent 规则</h2>
-          <div class="field"><label for="clientRuleName">客户端名称</label><input id="clientRuleName" placeholder="例如 Infuse"></div>
-          <div class="field"><label for="clientMatchValue">User-Agent 关键字或完整值</label><input id="clientMatchValue" placeholder="例如 infuse"></div>
+        <div class="card client-editor-card">
+          <div class="client-editor-head">
+            <div>
+              <h2 id="clientTitle">新建或编辑客户端 User-Agent 规则</h2>
+              <p class="muted">直接使用 Agent 名称作为规则名和匹配值，避免版本号带来的重复规则。</p>
+            </div>
+          </div>
+          <div class="field">
+            <label for="clientRuleName">客户端名称 / Agent 名称</label>
+            <input id="clientRuleName" placeholder="例如 infuse-direct / mozilla" oninput="syncClientNameField()">
+          </div>
           <div class="field">
             <label for="clientUpload">上传限速</label>
             <div class="input-with-unit">
-              <input id="clientUpload" type="number" min="0" step="0.01" value="0">
+              <input id="clientUpload" type="number" min="0" step="5" value="0">
               <select id="clientUploadUnit">
                 <option value="mbps" selected>Mbps</option>
                 <option value="kbps">Kbps</option>
@@ -959,7 +1262,7 @@
           <div class="field">
             <label for="clientDownload">下载限速</label>
             <div class="input-with-unit">
-              <input id="clientDownload" type="number" min="0" step="0.01" value="0">
+              <input id="clientDownload" type="number" min="0" step="5" value="0">
               <select id="clientDownloadUnit">
                 <option value="mbps" selected>Mbps</option>
                 <option value="kbps">Kbps</option>
@@ -967,7 +1270,10 @@
               </select>
             </div>
           </div>
-          <div class="muted">规则键会根据客户端名称自动生成；编辑现有规则时会保留原键。</div>
+          <div class="client-helper">
+            <span>规则键会根据这个名称自动生成；编辑现有规则时会保留原键。</span>
+            <span>输入时会自动忽略 `/` 后面的版本号，点击上方识别候选可一键填入。</span>
+          </div>
           <div class="actions">
             <button class="btn primary" onclick="saveClient()">保存</button>
             <button class="btn" onclick="resetClientForm()">重置</button>
@@ -996,11 +1302,27 @@
         <div id="trafficSummaryPane" class="traffic-pane active">
           <div class="chart-grid">
             <div class="chart-card">
-              <h3>用户出站占比</h3>
+              <div class="chart-card-head">
+                <h3>用户出站占比</h3>
+                <select id="trafficUserChartTopN" class="chart-top-select" onchange="setChartTopN('user', this.value)">
+                  <option value="3">前 3 项</option>
+                  <option value="5">前 5 项</option>
+                  <option value="8" selected>前 8 项</option>
+                  <option value="10">前 10 项</option>
+                </select>
+              </div>
               <div id="trafficUserChart"></div>
             </div>
             <div class="chart-card">
-              <h3>客户端出站占比</h3>
+              <div class="chart-card-head">
+                <h3>客户端出站占比</h3>
+                <select id="trafficClientChartTopN" class="chart-top-select" onchange="setChartTopN('client', this.value)">
+                  <option value="3">前 3 项</option>
+                  <option value="5">前 5 项</option>
+                  <option value="8" selected>前 8 项</option>
+                  <option value="10">前 10 项</option>
+                </select>
+              </div>
               <div id="trafficClientChart"></div>
             </div>
           </div>
@@ -1033,9 +1355,23 @@
           </div>
         </div>
         <div id="trafficRecordsPane" class="traffic-pane">
-          <div class="row" style="justify-content:space-between; margin-bottom:12px">
+          <div class="traffic-records-toolbar">
             <div class="muted">展示当前时间范围内的数据库记录，可逐条删除。</div>
-            <button class="btn danger" onclick="resetTrafficDatabase()">清空数据库</button>
+            <div class="traffic-records-controls">
+              <label for="trafficRecordsPageSize">每页条数
+                <select id="trafficRecordsPageSize" onchange="setTrafficRecordsPageSize(this.value)">
+                  <option value="20">20</option>
+                  <option value="50" selected>50</option>
+                  <option value="100">100</option>
+                </select>
+              </label>
+              <div class="traffic-records-pagination">
+                <button id="trafficRecordsPrev" class="btn" onclick="changeTrafficRecordsPage(-1)">上一页</button>
+                <span id="trafficRecordsPageInfo">第 1 / 1 页</span>
+                <button id="trafficRecordsNext" class="btn" onclick="changeTrafficRecordsPage(1)">下一页</button>
+              </div>
+              <button class="btn danger" onclick="resetTrafficDatabase()">清空数据库</button>
+            </div>
           </div>
           <table class="record-table">
             <thead><tr><th>时间</th><th>名称</th><th>类型</th><th>客户端</th><th>设备</th><th>路径</th><th>入站</th><th>出站</th><th>操作</th></tr></thead>
@@ -1081,9 +1417,23 @@
     let pendingRefresh = false;
     let currentTrafficRange = localStorage.getItem("emby_mp_traffic_range") || "day";
     let currentTrafficView = localStorage.getItem("emby_mp_traffic_view") || "summary";
+    let trafficUserChartTopN = Number(localStorage.getItem("emby_mp_chart_topn_user") || "8");
+    let trafficClientChartTopN = Number(localStorage.getItem("emby_mp_chart_topn_client") || "8");
+    let trafficRecordsPage = Number(localStorage.getItem("emby_mp_records_page") || "1");
+    let trafficRecordsPageSize = Number(localStorage.getItem("emby_mp_records_page_size") || "50");
     let cachedUsers = [];
+    let cachedObservedClients = [];
+    let cachedClientRules = [];
     let userFieldSyncLock = false;
+    let clientFieldSyncLock = false;
     let selectedUserId = "";
+    let activeUserStates = new Map();
+    let overviewLoadToken = 0;
+    let trafficLoadToken = 0;
+    let hasRealtimeDownloads = false;
+    let autoRefreshTimer = null;
+    let autoRefreshInFlight = false;
+    let clientNameAutofilled = false;
     const tableSortState = {
       overviewUsers: { key: "total_bytes_out", dir: "desc" },
       overviewClients: { key: "total_bytes_out", dir: "desc" },
@@ -1098,12 +1448,12 @@
       localStorage.setItem("emby_mp_section", section);
       document.querySelectorAll(".nav button").forEach((btn) => btn.classList.toggle("active", btn.dataset.section === section));
       document.querySelectorAll(".section").forEach((sec) => sec.classList.toggle("active", sec.id === section));
-      if (section === "overview") return loadOverview();
-      if (section === "users") return loadUsers();
-      if (section === "clients") return loadClients();
-      if (section === "traffic") return loadTraffic();
-      if (section === "settings") return loadSettings();
-      return Promise.resolve();
+      if (section === "overview") await loadOverview();
+      else if (section === "users") await loadUsers();
+      else if (section === "clients") await loadClients();
+      else if (section === "traffic") await loadTraffic();
+      else if (section === "settings") await loadSettings();
+      scheduleAutoRefresh();
     }
 
     async function api(path, options = {}) {
@@ -1157,6 +1507,10 @@
     function setAuthenticatedState(authenticated) {
       document.getElementById("loginView").classList.toggle("hidden", authenticated);
       document.getElementById("appView").classList.toggle("hidden", !authenticated);
+      if (!authenticated) {
+        clearTimeout(autoRefreshTimer);
+        autoRefreshTimer = null;
+      }
     }
 
     function persistIdentity(username) {
@@ -1223,7 +1577,9 @@
 
     function setTrafficRange(range) {
       currentTrafficRange = range;
+      trafficRecordsPage = 1;
       localStorage.setItem("emby_mp_traffic_range", range);
+      localStorage.setItem("emby_mp_records_page", "1");
       document.querySelectorAll("#trafficRangeSegment button").forEach((button) => {
         button.classList.toggle("active", button.dataset.range === range);
       });
@@ -1239,6 +1595,75 @@
       document.getElementById("trafficSummaryPane").classList.toggle("active", view === "summary");
       document.getElementById("trafficRecordsPane").classList.toggle("active", view === "records");
       loadTraffic();
+    }
+
+    function setTrafficRecordsPageSize(value) {
+      trafficRecordsPageSize = Math.max(1, Number(value) || 50);
+      trafficRecordsPage = 1;
+      localStorage.setItem("emby_mp_records_page_size", String(trafficRecordsPageSize));
+      localStorage.setItem("emby_mp_records_page", "1");
+      loadTraffic();
+    }
+
+    function changeTrafficRecordsPage(delta) {
+      const nextPage = Math.max(1, trafficRecordsPage + Number(delta || 0));
+      if (nextPage === trafficRecordsPage) return;
+      trafficRecordsPage = nextPage;
+      localStorage.setItem("emby_mp_records_page", String(trafficRecordsPage));
+      loadTraffic();
+    }
+
+    function updateTrafficRecordsPagination(total = 0, page = 1, pageSize = 50) {
+      const totalPages = Math.max(1, Math.ceil((Number(total) || 0) / Math.max(1, Number(pageSize) || 1)));
+      const pageInfo = document.getElementById("trafficRecordsPageInfo");
+      const prevButton = document.getElementById("trafficRecordsPrev");
+      const nextButton = document.getElementById("trafficRecordsNext");
+      const pageSizeSelect = document.getElementById("trafficRecordsPageSize");
+      if (pageInfo) pageInfo.textContent = `第 ${page} / ${totalPages} 页`;
+      if (prevButton) prevButton.disabled = page <= 1;
+      if (nextButton) nextButton.disabled = page >= totalPages;
+      if (pageSizeSelect) pageSizeSelect.value = String(pageSize);
+    }
+
+    function currentSection() {
+      return localStorage.getItem("emby_mp_section") || "overview";
+    }
+
+    function autoRefreshDelay() {
+      const section = currentSection();
+      if (hasRealtimeDownloads && (section === "overview" || section === "traffic")) return 2000;
+      if (section === "overview" || section === "traffic") return 7000;
+      return 12000;
+    }
+
+    function scheduleAutoRefresh() {
+      clearTimeout(autoRefreshTimer);
+      if (document.getElementById("appView").classList.contains("hidden")) return;
+      autoRefreshTimer = setTimeout(runAutoRefresh, autoRefreshDelay());
+    }
+
+    async function runAutoRefresh() {
+      if (document.hidden || isRefreshing || autoRefreshInFlight || document.getElementById("appView").classList.contains("hidden")) {
+        scheduleAutoRefresh();
+        return;
+      }
+
+      autoRefreshInFlight = true;
+      try {
+        const section = currentSection();
+        if (section === "overview") await loadOverview();
+        else if (section === "traffic") await loadTraffic();
+        else if (section === "users") await loadUsers();
+        else if (section === "clients") await loadClients();
+        else if (section === "settings") await loadSettings();
+      } catch (error) {
+        if (String(error?.message || "").includes("认证失败")) {
+          await logout(false);
+        }
+      } finally {
+        autoRefreshInFlight = false;
+        scheduleAutoRefresh();
+      }
     }
 
     async function refreshAll() {
@@ -1272,6 +1697,7 @@
 
       isRefreshing = false;
       setRefreshButtonState();
+      scheduleAutoRefresh();
     }
 
     async function syncUsers() {
@@ -1284,7 +1710,19 @@
       }
     }
 
+    function renderOverviewTables(userStats, clientStats) {
+      rows("overviewUsers", sortItems(userStats, "overviewUsers").slice(0, 8), (item) =>
+        `<tr><td>${renderWatchingUser(item.user_name || item.user_id || "未知", item.user_id)}</td><td>${formatBytes(item.total_bytes_in)}</td><td>${formatBytes(item.total_bytes_out)}</td><td>${item.request_count || 0}</td></tr>`,
+      4, "暂无用户数据");
+
+      rows("overviewClients", sortItems(clientStats, "overviewClients").slice(0, 8), (item) =>
+        `<tr><td>${safe(item.client_name || item.client_id || "未知")}</td><td>${formatBytes(item.total_bytes_out)}</td><td>${item.request_count || 0}</td></tr>`,
+      3, "暂无客户端数据");
+    }
+
     async function loadOverview() {
+      const token = ++overviewLoadToken;
+      const activeUsersPromise = api("/users/active").catch(() => null);
       const [users, clients, summary, serverStats, userStats, clientStats] = await Promise.all([
         api("/users"),
         api("/clients"),
@@ -1294,25 +1732,48 @@
         api("/traffic/clients?since=day")
       ]);
 
-      document.getElementById("statUsers").textContent = users.length;
-      document.getElementById("statClients").textContent = clients.length;
+      if (token !== overviewLoadToken) return;
+
+      document.getElementById("statRules").textContent = `${users.length} / ${clients.length}`;
       document.getElementById("statMemory").textContent = formatBytes(serverStats.memory_alloc || 0);
       document.getElementById("statIn").textContent = formatBytes(summary.total_bytes_in);
       document.getElementById("statOut").textContent = formatBytes(summary.total_bytes_out);
+      document.getElementById("statLiveDown").textContent = formatRate(serverStats.download_bps || 0);
+      document.getElementById("statLiveUp").textContent = formatRate(serverStats.upload_bps || 0);
+      renderOverviewTables(userStats, clientStats);
 
-      rows("overviewUsers", sortItems(userStats, "overviewUsers").slice(0, 8), (item) =>
-        `<tr><td>${safe(item.user_name || item.user_id || "未知")}</td><td>${formatBytes(item.total_bytes_in)}</td><td>${formatBytes(item.total_bytes_out)}</td><td>${item.request_count || 0}</td></tr>`,
-      4, "暂无用户数据");
-
-      rows("overviewClients", sortItems(clientStats, "overviewClients").slice(0, 8), (item) =>
-        `<tr><td>${safe(item.client_name || item.client_id || "未知")}</td><td>${formatBytes(item.total_bytes_out)}</td><td>${item.request_count || 0}</td></tr>`,
-      3, "暂无客户端数据");
+      const activeUsers = await activeUsersPromise;
+      if (token !== overviewLoadToken || !activeUsers) return;
+      setActiveUserStates(activeUsers.users || []);
+      renderOverviewTables(userStats, clientStats);
     }
 
     async function loadUsers() {
       cachedUsers = await api("/users");
       cachedUsers.sort((a, b) => (a.name || a.id || "").localeCompare(b.name || b.id || "", "zh-CN"));
       renderUsers();
+    }
+
+    function normalizeObservedClient(item) {
+      const rawUserAgent = String(item.user_agent || "").trim();
+      return {
+        client_name: String(item.client_name || "").trim(),
+        device_name: String(item.device_name || "").trim(),
+        user_agent: clientUserAgentBase(rawUserAgent),
+        user_agent_raw: rawUserAgent,
+        last_seen: item.last_seen || "",
+        request_count: Number(item.request_count) || 0
+      };
+    }
+
+    function clientUserAgentBase(value) {
+      const raw = String(value || "").trim();
+      if (!raw) return "";
+      return raw.split("/")[0].trim();
+    }
+
+    function normalizeClientLookup(value) {
+      return clientUserAgentBase(value).toLowerCase();
     }
 
     function findUserMatch(source, value) {
@@ -1364,6 +1825,96 @@
       const match = findUserMatch("name", sourceValue);
       setUserFieldHints(match, true);
       if (!match) return;
+    }
+
+    function observedClientLabel(item) {
+      return item?.client_name || item?.device_name || "已识别客户端";
+    }
+
+    function hasExistingClientRule(item) {
+      const candidateName = normalizeClientLookup(observedClientLabel(item));
+      const candidateUA = normalizeClientLookup(item?.user_agent || item?.user_agent_raw || "");
+      return cachedClientRules.some((rule) => {
+        const ruleName = normalizeClientLookup(rule?.name || "");
+        const ruleMatch = normalizeClientLookup(rule?.match_value || "");
+        return (!!candidateName && (candidateName === ruleName || candidateName === ruleMatch))
+          || (!!candidateUA && (candidateUA === ruleName || candidateUA === ruleMatch));
+      });
+    }
+
+    function matchesCurrentClientForm(item) {
+      const currentName = normalizeClientLookup(document.getElementById("clientRuleName")?.value || "");
+      const candidateName = normalizeClientLookup(observedClientLabel(item));
+      const candidateUA = normalizeClientLookup(item?.user_agent || item?.user_agent_raw || "");
+      return !!currentName && (currentName === candidateName || currentName === candidateUA);
+    }
+
+    function findObservedClientMatch(source, value) {
+      const keyword = normalizeClientLookup(value);
+      if (!keyword) return null;
+
+      const rank = (item) => {
+        const label = normalizeClientLookup(observedClientLabel(item) || "");
+        const device = normalizeClientLookup(item.device_name || "");
+        const ua = normalizeClientLookup(item.user_agent || item.user_agent_raw || "");
+        const candidates = source === "name" ? [label, device] : [ua];
+        for (const candidate of candidates) {
+          if (!candidate) continue;
+          if (candidate === keyword) return 3;
+          if (candidate.startsWith(keyword)) return 2;
+          if (candidate.includes(keyword)) return 1;
+        }
+        return 0;
+      };
+
+      return cachedObservedClients
+        .map((item) => ({ item, score: rank(item) }))
+        .filter((item) => item.score > 0)
+        .sort((left, right) => {
+          if (right.score !== left.score) return right.score - left.score;
+          return (right.item.request_count || 0) - (left.item.request_count || 0);
+        })[0]?.item || null;
+    }
+
+    function syncClientNameField() {
+      if (clientFieldSyncLock) return;
+      const nameInput = document.getElementById("clientRuleName");
+      if (!nameInput) return;
+
+      clientNameAutofilled = false;
+      renderClientSuggestions();
+    }
+
+    function applyObservedClientSuggestion(index) {
+      const item = cachedObservedClients[index];
+      if (!item) return;
+      clientFieldSyncLock = true;
+      document.getElementById("clientRuleName").value = clientUserAgentBase(item.user_agent || item.user_agent_raw || "");
+      clientFieldSyncLock = false;
+      clientNameAutofilled = false;
+      renderClientSuggestions();
+    }
+
+    function renderClientSuggestions() {
+      const container = document.getElementById("clientSuggestions");
+      const count = document.getElementById("clientObservedCount");
+      const suggestions = cachedObservedClients.filter((item) => !hasExistingClientRule(item) && !matchesCurrentClientForm(item));
+      if (count) count.textContent = String(suggestions.length || 0);
+      if (!container) return;
+      if (!suggestions.length) {
+        container.innerHTML = `<div class="empty" style="padding:8px 0 2px">还没有识别到可用于补全的 User-Agent，等有人播放后会自动出现。</div>`;
+        return;
+      }
+
+      container.innerHTML = suggestions.slice(0, 10).map((item) => {
+        const index = cachedObservedClients.indexOf(item);
+        return `
+        <button class="client-suggestion" onclick="applyObservedClientSuggestion(${index})" title="${safe(item.user_agent_raw || item.user_agent)}">
+          <span class="client-suggestion-name" title="${safe(observedClientLabel(item))}">${safe(observedClientLabel(item))}</span>
+          <span class="client-suggestion-meta" title="${safe(item.user_agent_raw || item.user_agent)}">${safe(clientUserAgentBase(item.user_agent || item.user_agent_raw || ""))}</span>
+        </button>
+      `;
+      }).join("");
     }
 
     function userSpeedUnitFactor(unit) {
@@ -1427,6 +1978,18 @@
       if (tableKey === "trafficUsers" || tableKey === "trafficClients") return loadTraffic();
     }
 
+    function setChartTopN(kind, value) {
+      const parsed = Math.max(1, Number(value) || 8);
+      if (kind === "user") {
+        trafficUserChartTopN = parsed;
+        localStorage.setItem("emby_mp_chart_topn_user", String(parsed));
+      } else {
+        trafficClientChartTopN = parsed;
+        localStorage.setItem("emby_mp_chart_topn_client", String(parsed));
+      }
+      loadTraffic();
+    }
+
     function chartPalette(index) {
       const colors = [
         "#d3847b",
@@ -1457,7 +2020,7 @@
       return `M ${cx} ${cy} L ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArcFlag} 0 ${end.x} ${end.y} Z`;
     }
 
-    function buildPieSeries(items, labelKey) {
+    function buildPieSeries(items, labelKey, topN) {
       const rows = (items || [])
         .map((item) => ({
           label: item[labelKey] || item.user_id || item.client_id || "未知",
@@ -1466,19 +2029,20 @@
         .filter((item) => item.value > 0)
         .sort((a, b) => b.value - a.value);
 
-      const top = rows.slice(0, 8);
-      const otherValue = rows.slice(8).reduce((sum, item) => sum + item.value, 0);
+      const limit = Math.max(1, Number(topN) || 8);
+      const top = rows.slice(0, limit);
+      const otherValue = rows.slice(limit).reduce((sum, item) => sum + item.value, 0);
       if (otherValue > 0) {
         top.push({ label: "其他", value: otherValue });
       }
       return top;
     }
 
-    function renderPieChart(containerId, items, labelKey) {
+    function renderPieChart(containerId, items, labelKey, topN) {
       const container = document.getElementById(containerId);
       if (!container) return;
 
-      const series = buildPieSeries(items, labelKey);
+      const series = buildPieSeries(items, labelKey, topN);
       const total = series.reduce((sum, item) => sum + item.value, 0);
       if (!total) {
         container.innerHTML = `<div class="empty">暂无可绘制的流量数据</div>`;
@@ -1608,7 +2172,7 @@
             </div>
             <div class="user-card-actions">
               <button class="btn soft" onclick='editUser(${JSON.stringify(JSON.stringify(item))})'>编辑用户</button>
-              <button class="btn danger" onclick='deleteUser(${JSON.stringify(item.id)})'>删除规则</button>
+              <button class="btn danger" onclick='deleteUser(${JSON.stringify(item.id)})'>重置规则</button>
             </div>
           </article>
         `;
@@ -1662,26 +2226,42 @@
     }
 
     async function deleteUser(id) {
-      if (!confirm(`确定删除用户规则 ${id} 吗？`)) return;
+      if (!confirm(`确定将用户 ${id} 的限速规则重置为默认值吗？`)) return;
       await api(`/users/${encodeURIComponent(id)}`, { method: "DELETE" });
       if (editingUserId === id) resetUserForm();
       await Promise.all([loadUsers(), loadOverview()]);
-      toast("用户规则已删除");
+      toast("用户规则已重置");
     }
 
     async function loadClients() {
-      const clients = sortItems(await api("/clients"), "clientsTable");
+      const [clientRules, discoveredClients] = await Promise.all([
+        api("/clients"),
+        api("/clients/discovered?limit=24")
+      ]);
+      cachedClientRules = clientRules || [];
+      cachedObservedClients = (discoveredClients || []).map(normalizeObservedClient);
+      renderClientSuggestions();
+      const clients = sortItems((clientRules || []).map((item) => ({
+        ...item,
+        name: item.match_type === "user_agent" ? clientUserAgentBase(item.match_value || item.name || "") : (item.name || "")
+      })), "clientsTable");
       rows("clientsTable", clients, (item) =>
-        `<tr><td><code>${safe(item.id)}</code></td><td>${safe(item.name || "-")}</td><td><span class="tag">user_agent</span><div class="muted">${safe(item.match_value)}</div></td><td>${formatSpeed(item.upload_limit)}</td><td>${formatSpeed(item.download_limit)}</td><td><div class="actions"><button class="btn" onclick='editClient(${JSON.stringify(JSON.stringify(item))})'>编辑</button><button class="btn danger" onclick='deleteClient(${JSON.stringify(item.id)})'>删除</button></div></td></tr>`,
-      6, "暂无客户端规则");
+        `<tr>
+          <td><div class="client-rule-title"><span class="client-rule-name">${safe(item.name || "-")}</span><span class="client-rule-id">规则键：${safe(item.id)}</span></div></td>
+          <td><span class="client-rule-speed">${formatSpeed(item.upload_limit)}</span></td>
+          <td><span class="client-rule-speed">${formatSpeed(item.download_limit)}</span></td>
+          <td><div class="actions"><button class="btn" onclick='editClient(${JSON.stringify(JSON.stringify(item))})'>编辑</button><button class="btn danger" onclick='deleteClient(${JSON.stringify(item.id)})'>删除</button></div></td>
+        </tr>`,
+      4, "暂无客户端规则");
     }
 
     function editClient(payload) {
       const item = JSON.parse(payload);
       editingClientId = item.id;
       document.getElementById("clientTitle").textContent = `编辑客户端 User-Agent 规则：${item.name || item.id}`;
-      document.getElementById("clientRuleName").value = item.name || "";
-      document.getElementById("clientMatchValue").value = item.match_value || "";
+      document.getElementById("clientRuleName").value = clientUserAgentBase(item.match_value || item.name || "");
+      clientNameAutofilled = false;
+      renderClientSuggestions();
       const upload = bytesToUserSpeedInput(item.upload_limit);
       const download = bytesToUserSpeedInput(item.download_limit);
       document.getElementById("clientUpload").value = upload.amount;
@@ -1693,7 +2273,9 @@
     function resetClientForm() {
       editingClientId = "";
       document.getElementById("clientTitle").textContent = "新建或编辑客户端 User-Agent 规则";
-      ["clientRuleName", "clientMatchValue"].forEach((id) => { document.getElementById(id).value = ""; });
+      document.getElementById("clientRuleName").value = "";
+      clientNameAutofilled = false;
+      renderClientSuggestions();
       document.getElementById("clientUpload").value = 0;
       document.getElementById("clientUploadUnit").value = "mbps";
       document.getElementById("clientDownload").value = 0;
@@ -1701,7 +2283,7 @@
     }
 
     async function saveClient() {
-      const name = document.getElementById("clientRuleName").value.trim();
+      const name = clientUserAgentBase(document.getElementById("clientRuleName").value.trim());
       if (!name) {
         toast("请输入客户端名称");
         return;
@@ -1713,7 +2295,7 @@
           id: editingClientId,
           name,
           match_type: "user_agent",
-          match_value: document.getElementById("clientMatchValue").value.trim(),
+          match_value: name,
           upload_limit: userSpeedInputToBytes("clientUpload", "clientUploadUnit"),
           download_limit: userSpeedInputToBytes("clientDownload", "clientDownloadUnit")
         })
@@ -1732,10 +2314,38 @@
       toast("客户端规则已删除");
     }
 
+    function renderTrafficSummary(users, clients) {
+      const sortedTrafficUsers = sortItems(users, "trafficUsers");
+      const sortedTrafficClients = sortItems(clients, "trafficClients");
+
+      rows("trafficUsers", sortedTrafficUsers, (item) =>
+        `<tr><td>${renderWatchingUser(item.user_name || item.user_id || "未知", item.user_id)}</td><td>${formatBytes(item.total_bytes_in)}</td><td>${formatBytes(item.total_bytes_out)}</td><td>${item.request_count || 0}</td></tr>`,
+      4, "暂无用户统计");
+
+      rows("trafficClients", sortedTrafficClients, (item) =>
+        `<tr><td>${safe(item.client_name || item.client_id || "未知")}</td><td>${safe(item.device_name || item.device_id || "-")}</td><td>${formatBytes(item.total_bytes_in)}</td><td>${formatBytes(item.total_bytes_out)}</td><td>${item.request_count || 0}</td></tr>`,
+      5, "暂无客户端统计");
+
+      renderPieChart("trafficUserChart", sortedTrafficUsers, "user_name", trafficUserChartTopN);
+      renderPieChart("trafficClientChart", sortedTrafficClients, "client_name", trafficClientChartTopN);
+    }
+
     async function loadTraffic() {
+      const userTopSelect = document.getElementById("trafficUserChartTopN");
+      const clientTopSelect = document.getElementById("trafficClientChartTopN");
+      if (userTopSelect) userTopSelect.value = String(trafficUserChartTopN);
+      if (clientTopSelect) clientTopSelect.value = String(trafficClientChartTopN);
+
       if (currentTrafficView === "records") {
-        const records = await api(`/traffic/records?since=${currentTrafficRange}&limit=200`);
-        rows("trafficRecords", records, (item) =>
+        const recordsResponse = await api(`/traffic/records?since=${currentTrafficRange}&page=${trafficRecordsPage}&page_size=${trafficRecordsPageSize}`);
+        const totalPages = Math.max(1, Math.ceil((Number(recordsResponse.total) || 0) / Math.max(1, Number(recordsResponse.page_size) || 1)));
+        if ((recordsResponse.page || 1) > totalPages && totalPages > 0) {
+          trafficRecordsPage = totalPages;
+          localStorage.setItem("emby_mp_records_page", String(trafficRecordsPage));
+          return loadTraffic();
+        }
+        updateTrafficRecordsPagination(recordsResponse.total, recordsResponse.page || 1, recordsResponse.page_size || trafficRecordsPageSize);
+        rows("trafficRecords", recordsResponse.items || [], (item) =>
           `<tr>
             <td>${safe(formatDateTime(item.timestamp))}</td>
             <td><div class="record-meta"><div class="record-title">${safe(item.user_name || item.user_id || "未知")}</div><div class="record-subtitle">${safe(item.server_id || "-")}</div></div></td>
@@ -1751,24 +2361,27 @@
         return;
       }
 
+      rows("trafficUsers", [], () => "", 4, "加载中...");
+      rows("trafficClients", [], () => "", 5, "加载中...");
+      const userChart = document.getElementById("trafficUserChart");
+      const clientChart = document.getElementById("trafficClientChart");
+      if (userChart) userChart.innerHTML = `<div class="empty">加载中...</div>`;
+      if (clientChart) clientChart.innerHTML = `<div class="empty">加载中...</div>`;
+
+      const token = ++trafficLoadToken;
+      const activeUsersPromise = api("/users/active").catch(() => null);
       const [users, clients] = await Promise.all([
         api(`/traffic/users?since=${currentTrafficRange}`),
         api(`/traffic/clients?since=${currentTrafficRange}`)
       ]);
 
-      const sortedTrafficUsers = sortItems(users, "trafficUsers");
-      const sortedTrafficClients = sortItems(clients, "trafficClients");
+      if (token !== trafficLoadToken) return;
+      renderTrafficSummary(users, clients);
 
-      rows("trafficUsers", sortedTrafficUsers, (item) =>
-        `<tr><td>${safe(item.user_name || item.user_id || "未知")}</td><td>${formatBytes(item.total_bytes_in)}</td><td>${formatBytes(item.total_bytes_out)}</td><td>${item.request_count || 0}</td></tr>`,
-      4, "暂无用户统计");
-
-      rows("trafficClients", sortedTrafficClients, (item) =>
-        `<tr><td>${safe(item.client_name || item.client_id || "未知")}</td><td>${safe(item.device_name || item.device_id || "-")}</td><td>${formatBytes(item.total_bytes_in)}</td><td>${formatBytes(item.total_bytes_out)}</td><td>${item.request_count || 0}</td></tr>`,
-      5, "暂无客户端统计");
-
-      renderPieChart("trafficUserChart", sortedTrafficUsers, "user_name");
-      renderPieChart("trafficClientChart", sortedTrafficClients, "client_name");
+      const activeUsers = await activeUsersPromise;
+      if (token !== trafficLoadToken || !activeUsers) return;
+      setActiveUserStates(activeUsers.users || []);
+      renderTrafficSummary(users, clients);
     }
 
     async function refreshTrafficDataViews() {
@@ -1865,6 +2478,43 @@
       return speed === 0 ? "不限" : `${formatBytes(speed)}/s`;
     }
 
+    function formatRate(value) {
+      const speed = Number(value) || 0;
+      return `${formatBytes(speed)}/s`;
+    }
+
+    function setActiveUserStates(users) {
+      activeUserStates = new Map();
+      hasRealtimeDownloads = false;
+      (users || []).forEach((item) => {
+        const userId = String(item?.user_id || "").trim();
+        if (!userId) return;
+        const downloadBps = Number(item?.download_bps) || 0;
+        if (!!item?.downloading && downloadBps > 0) {
+          hasRealtimeDownloads = true;
+        }
+        activeUserStates.set(userId, {
+          user_id: userId,
+          user_name: String(item?.user_name || "").trim(),
+          session_watching: !!item?.session_watching,
+          downloading: !!item?.downloading,
+          download_bps: downloadBps
+        });
+      });
+    }
+
+    function renderWatchingUser(label, userId) {
+      const state = activeUserStates.get(String(userId || "").trim());
+      let inlineStatus = "";
+      let rowStatus = "";
+      if (state?.downloading && (state.download_bps || 0) > 0) {
+        rowStatus = `<span class="watching-pill" title="当前下载速度 ${formatRate(state.download_bps)}">${formatRate(state.download_bps)}</span>`;
+      } else if (state?.session_watching) {
+        inlineStatus = '<span class="watching-dot" title="正在观看"></span>';
+      }
+      return `<div class="watching-user"><div class="watching-user-main"><span class="watching-user-label">${safe(label || "未知")}</span><span class="watching-status">${inlineStatus}</span></div>${rowStatus ? `<div class="watching-status-row">${rowStatus}</div>` : ""}</div>`;
+    }
+
     function safe(value) {
       return String(value ?? "")
         .replaceAll("&", "&amp;")
@@ -1893,6 +2543,9 @@
       button.classList.toggle("active", button.dataset.view === currentTrafficView);
     });
     updateSortButtons();
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) scheduleAutoRefresh();
+    });
     document.getElementById("trafficSummaryPane").classList.toggle("active", currentTrafficView === "summary");
     document.getElementById("trafficRecordsPane").classList.toggle("active", currentTrafficView === "records");
     fetch("/api/auth/status", { credentials: "same-origin" })

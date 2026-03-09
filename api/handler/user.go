@@ -7,6 +7,7 @@ import (
 	"emby-media-portal/internal/auth"
 	"emby-media-portal/internal/database"
 	"emby-media-portal/internal/ratelimit"
+	"emby-media-portal/internal/stats"
 
 	"github.com/gin-gonic/gin"
 )
@@ -33,6 +34,18 @@ type UserResponse struct {
 	Name          string `json:"name"`
 	UploadLimit   int64  `json:"upload_limit"`
 	DownloadLimit int64  `json:"download_limit"`
+}
+
+type ActiveUsersResponse struct {
+	Users []ActiveUserStatus `json:"users"`
+}
+
+type ActiveUserStatus struct {
+	UserID          string `json:"user_id"`
+	UserName        string `json:"user_name,omitempty"`
+	SessionWatching bool   `json:"session_watching"`
+	Downloading     bool   `json:"downloading"`
+	DownloadBps     int64  `json:"download_bps"`
 }
 
 // ListUsers returns all users with their rules
@@ -178,12 +191,69 @@ func (h *UserHandler) DeleteUserRule(c *gin.Context) {
 		return
 	}
 
-	if err := h.rulesManager.DeleteUserRule(userID); err != nil {
+	existing, err := h.rulesManager.GetUserRule(userID)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "User rule deleted successfully"})
+	defaultUpload, defaultDownload := h.limiterManager.GetDefaults()
+	name := ""
+	if existing != nil {
+		name = existing.UserName
+	}
+
+	if err := h.rulesManager.SetUserRule(&ratelimit.UserRule{
+		UserID:        userID,
+		UserName:      name,
+		UploadLimit:   defaultUpload,
+		DownloadLimit: defaultDownload,
+	}); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "User rule reset successfully"})
+}
+
+func (h *UserHandler) ListActiveUsers(c *gin.Context) {
+	active := make(map[string]ActiveUserStatus)
+
+	sessionUsers, err := h.identifier.GetActiveSessionUsers()
+	if err == nil {
+		for userID, user := range sessionUsers {
+			if userID != "" {
+				item := active[userID]
+				item.UserID = userID
+				item.UserName = user.Name
+				item.SessionWatching = true
+				active[userID] = item
+			}
+		}
+	}
+
+	trafficUsers, err := stats.ListActiveUserTraffic(32 * 1024)
+	if err == nil {
+		for _, trafficUser := range trafficUsers {
+			if trafficUser.UserID != "" {
+				item := active[trafficUser.UserID]
+				item.UserID = trafficUser.UserID
+				if item.UserName == "" {
+					item.UserName = trafficUser.UserName
+				}
+				item.Downloading = true
+				item.DownloadBps = trafficUser.DownloadBps
+				active[trafficUser.UserID] = item
+			}
+		}
+	}
+
+	users := make([]ActiveUserStatus, 0, len(active))
+	for _, item := range active {
+		users = append(users, item)
+	}
+
+	c.JSON(http.StatusOK, ActiveUsersResponse{Users: users})
 }
 
 // GetServerStats returns database stats
@@ -199,11 +269,16 @@ func (h *UserHandler) GetServerStats(c *gin.Context) {
 	db.QueryRow("SELECT COUNT(*) FROM servers").Scan(&serverCount)
 	var mem runtime.MemStats
 	runtime.ReadMemStats(&mem)
+	rates := stats.GetCurrentTransferRates()
 
 	c.JSON(http.StatusOK, gin.H{
 		"user_count":        userCount,
 		"server_count":      serverCount,
 		"memory_alloc":      mem.Alloc,
 		"memory_heap_inuse": mem.HeapInuse,
+		"upload_bps":        rates.UploadBps,
+		"download_bps":      rates.DownloadBps,
+		"active_uploads":    rates.ActiveUploads,
+		"active_downloads":  rates.ActiveDownloads,
 	})
 }

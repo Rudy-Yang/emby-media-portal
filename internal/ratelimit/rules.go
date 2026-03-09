@@ -372,14 +372,28 @@ func (r *RulesManager) MatchClientRule(clientName, deviceID, userAgent string) (
 		}
 
 		rule := &ClientRule{}
+		normalizedValue := normalizeClientMatchValue(candidate.matchType, candidate.matchValue)
 		err := db.QueryRow(
 			`SELECT id, name, match_type, match_value, upload_limit, download_limit
 			 FROM client_rules
 			 WHERE match_type = ? AND match_value = ?`,
-			candidate.matchType, normalizeClientMatchValue(candidate.matchType, candidate.matchValue),
+			candidate.matchType, normalizedValue,
 		).Scan(&rule.ID, &rule.Name, &rule.MatchType, &rule.MatchValue, &rule.UploadLimit, &rule.DownloadLimit)
 		if err == sql.ErrNoRows {
-			continue
+			if candidate.matchType != "user_agent" {
+				continue
+			}
+			err = db.QueryRow(
+				`SELECT id, name, match_type, match_value, upload_limit, download_limit
+				 FROM client_rules
+				 WHERE match_type = 'user_agent' AND ? LIKE '%' || match_value || '%'
+				 ORDER BY LENGTH(match_value) DESC
+				 LIMIT 1`,
+				normalizedValue,
+			).Scan(&rule.ID, &rule.Name, &rule.MatchType, &rule.MatchValue, &rule.UploadLimit, &rule.DownloadLimit)
+			if err == sql.ErrNoRows {
+				continue
+			}
 		}
 		if err != nil {
 			return nil, err
@@ -398,7 +412,12 @@ func clientLimiterKey(id string) string {
 func normalizeClientMatchValue(matchType, value string) string {
 	value = strings.TrimSpace(value)
 	switch matchType {
-	case "client_name", "user_agent":
+	case "client_name":
+		return strings.ToLower(value)
+	case "user_agent":
+		if idx := strings.Index(value, "/"); idx >= 0 {
+			value = value[:idx]
+		}
 		return strings.ToLower(value)
 	default:
 		return value

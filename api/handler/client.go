@@ -3,9 +3,11 @@ package handler
 import (
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"emby-media-portal/internal/ratelimit"
+	"emby-media-portal/internal/stats"
 
 	"github.com/gin-gonic/gin"
 )
@@ -34,6 +36,14 @@ type ClientRuleResponse struct {
 	DownloadLimit int64  `json:"download_limit"`
 }
 
+type DiscoveredClientResponse struct {
+	ClientName   string `json:"client_name"`
+	DeviceName   string `json:"device_name"`
+	UserAgent    string `json:"user_agent"`
+	LastSeen     string `json:"last_seen"`
+	RequestCount int64  `json:"request_count"`
+}
+
 // SaveClientRuleRequest represents the request body for client rules.
 type SaveClientRuleRequest struct {
 	ID            string `json:"id"`
@@ -55,6 +65,37 @@ func (h *ClientHandler) ListClients(c *gin.Context) {
 	response := make([]ClientRuleResponse, len(rules))
 	for i, rule := range rules {
 		response[i] = clientRuleToResponse(rule)
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+func (h *ClientHandler) ListDiscoveredClients(c *gin.Context) {
+	limit := 24
+	if raw := strings.TrimSpace(c.Query("limit")); raw != "" {
+		parsed, err := strconv.Atoi(raw)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid limit"})
+			return
+		}
+		limit = parsed
+	}
+
+	items, err := stats.ListObservedClients(limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	response := make([]DiscoveredClientResponse, len(items))
+	for i, item := range items {
+		response[i] = DiscoveredClientResponse{
+			ClientName:   item.ClientName,
+			DeviceName:   item.DeviceName,
+			UserAgent:    item.UserAgent,
+			LastSeen:     item.LastSeen,
+			RequestCount: item.RequestCount,
+		}
 	}
 
 	c.JSON(http.StatusOK, response)
@@ -93,7 +134,14 @@ func (h *ClientHandler) SaveClientRule(c *gin.Context) {
 	if req.MatchType == "" {
 		req.MatchType = "user_agent"
 	}
+	req.Name = normalizeClientRuleValue(req.MatchType, req.Name)
 	req.MatchValue = normalizeClientRuleValue(req.MatchType, req.MatchValue)
+	if req.MatchType == "user_agent" {
+		if req.Name == "" {
+			req.Name = req.MatchValue
+		}
+		req.MatchValue = req.Name
+	}
 	if req.ID == "" {
 		req.ID = strings.TrimSpace(c.Param("id"))
 	}
@@ -170,7 +218,12 @@ func clientRuleToResponse(rule ratelimit.ClientRule) ClientRuleResponse {
 func normalizeClientRuleValue(matchType, value string) string {
 	value = strings.TrimSpace(value)
 	switch matchType {
-	case "client_name", "user_agent":
+	case "client_name":
+		return strings.ToLower(value)
+	case "user_agent":
+		if idx := strings.Index(value, "/"); idx >= 0 {
+			value = value[:idx]
+		}
 		return strings.ToLower(value)
 	default:
 		return value

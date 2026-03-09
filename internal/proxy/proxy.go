@@ -79,6 +79,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	startTime := time.Now()
 	var (
 		userID       string
+		userName     string
 		client       *auth.ClientInfo
 		serverID     string
 		trafficKind  string
@@ -92,7 +93,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if !shouldRecord {
 			return
 		}
-		p.recordStats(r, userID, client, serverID, trafficKind, bytesRead, bytesWritten)
+		p.recordStats(r, userID, userName, client, serverID, trafficKind, bytesRead, bytesWritten)
 		p.statsTracker.FinishTransfer(transferID)
 	}()
 
@@ -104,6 +105,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if user != nil {
 		userID = user.ID
+		userName = user.Name
 	}
 	trafficKind = classifyTraffic(r, userID)
 
@@ -224,7 +226,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	defer resp.Body.Close()
 	shouldRecord = true
-	transferID = p.startTransfer(userID, client, serverID, r.URL.Path, trafficKind, int64(bytesRead))
+	transferID = p.startTransfer(userID, userName, client, serverID, r.URL.Path, trafficKind, int64(bytesRead))
 
 	// Copy response headers
 	for key, values := range resp.Header {
@@ -310,26 +312,28 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		r.Method, r.URL.Path, userID, resp.StatusCode, bytesRead, bytesWritten, time.Since(startTime))
 }
 
-func (p *Proxy) recordStats(r *http.Request, userID string, client *auth.ClientInfo, serverID, trafficKind string, bytesRead, bytesWritten int) {
-	clientID, clientName, deviceID, deviceName := "", "", "", ""
+func (p *Proxy) recordStats(r *http.Request, userID, userName string, client *auth.ClientInfo, serverID, trafficKind string, bytesRead, bytesWritten int) {
+	clientID, clientName, deviceID, deviceName, userAgent := "", "", "", "", ""
 	if client != nil {
 		clientID = client.ID
 		clientName = client.Name
 		deviceID = client.DeviceID
 		deviceName = client.DeviceName
+		userAgent = client.UserAgent
 	}
-	p.statsTracker.Record(userID, clientID, clientName, deviceID, deviceName, serverID, r.URL.Path, trafficKind, int64(bytesRead), int64(bytesWritten))
+	p.statsTracker.Record(userID, userName, clientID, clientName, deviceID, deviceName, userAgent, serverID, r.URL.Path, trafficKind, int64(bytesRead), int64(bytesWritten))
 }
 
-func (p *Proxy) startTransfer(userID string, client *auth.ClientInfo, serverID, requestPath, trafficKind string, bytesIn int64) string {
-	clientID, clientName, deviceID, deviceName := "", "", "", ""
+func (p *Proxy) startTransfer(userID, userName string, client *auth.ClientInfo, serverID, requestPath, trafficKind string, bytesIn int64) string {
+	clientID, clientName, deviceID, deviceName, userAgent := "", "", "", "", ""
 	if client != nil {
 		clientID = client.ID
 		clientName = client.Name
 		deviceID = client.DeviceID
 		deviceName = client.DeviceName
+		userAgent = client.UserAgent
 	}
-	return p.statsTracker.StartTransfer(userID, clientID, clientName, deviceID, deviceName, serverID, requestPath, trafficKind, bytesIn)
+	return p.statsTracker.StartTransfer(userID, userName, clientID, clientName, deviceID, deviceName, userAgent, serverID, requestPath, trafficKind, bytesIn)
 }
 
 func rewriteDiscoveryResponse(r *http.Request, resp *http.Response, backendBaseURL string) ([]byte, int, bool) {

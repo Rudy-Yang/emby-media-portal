@@ -36,6 +36,13 @@ type StatsResponse struct {
 	RequestCount  int64  `json:"request_count"`
 }
 
+type TrafficEntriesResponse struct {
+	Items    []StatsResponse `json:"items"`
+	Total    int64           `json:"total"`
+	Page     int             `json:"page"`
+	PageSize int             `json:"page_size"`
+}
+
 // GetUserStats returns stats for a specific user
 func (h *StatsHandler) GetUserStats(c *gin.Context) {
 	userID := c.Param("id")
@@ -182,24 +189,33 @@ func (h *StatsHandler) GetTrafficSummary(c *gin.Context) {
 
 func (h *StatsHandler) ListTrafficEntries(c *gin.Context) {
 	since := parseTimeRange(c.Query("since"))
-	limit := 200
-	if raw := c.Query("limit"); raw != "" {
+	page := 1
+	if raw := c.Query("page"); raw != "" {
 		parsed, err := strconv.Atoi(raw)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid limit parameter"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid page parameter"})
 			return
 		}
-		limit = parsed
+		page = parsed
+	}
+	pageSize := 50
+	if raw := c.Query("page_size"); raw != "" {
+		parsed, err := strconv.Atoi(raw)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid page_size parameter"})
+			return
+		}
+		pageSize = parsed
 	}
 
-	entries, err := stats.ListTrafficEntries(since, limit)
+	entries, err := stats.ListTrafficEntries(since, page, pageSize)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	response := make([]StatsResponse, len(entries))
-	for i, entry := range entries {
+	response := make([]StatsResponse, len(entries.Items))
+	for i, entry := range entries.Items {
 		response[i] = StatsResponse{
 			ID:            entry.ID,
 			UserID:        entry.UserID,
@@ -218,7 +234,12 @@ func (h *StatsHandler) ListTrafficEntries(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusOK, response)
+	c.JSON(http.StatusOK, TrafficEntriesResponse{
+		Items:    response,
+		Total:    entries.Total,
+		Page:     entries.Page,
+		PageSize: entries.PageSize,
+	})
 }
 
 func (h *StatsHandler) DeleteTrafficEntry(c *gin.Context) {
