@@ -51,6 +51,7 @@ func (h *StatsHandler) GetUserStats(c *gin.Context) {
 
 	c.JSON(http.StatusOK, StatsResponse{
 		UserID:        s.UserID,
+		UserName:      s.UserName,
 		TotalBytesIn:  s.TotalBytesIn,
 		TotalBytesOut: s.TotalBytesOut,
 		RequestCount:  s.RequestCount,
@@ -71,6 +72,7 @@ func (h *StatsHandler) GetAllStats(c *gin.Context) {
 	for i, s := range allStats {
 		response[i] = StatsResponse{
 			UserID:        s.UserID,
+			UserName:      s.UserName,
 			TotalBytesIn:  s.TotalBytesIn,
 			TotalBytesOut: s.TotalBytesOut,
 			RequestCount:  s.RequestCount,
@@ -154,6 +156,23 @@ func (h *StatsHandler) GetServerStats(c *gin.Context) {
 		TotalBytesIn:  s.TotalBytesIn,
 		TotalBytesOut: s.TotalBytesOut,
 		RequestCount:  s.RequestCount,
+	})
+}
+
+// GetTrafficSummary returns overall traffic totals for the time range.
+func (h *StatsHandler) GetTrafficSummary(c *gin.Context) {
+	since := parseTimeRange(c.Query("since"))
+
+	summary, err := stats.GetTrafficSummary(since)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, StatsResponse{
+		TotalBytesIn:  summary.TotalBytesIn,
+		TotalBytesOut: summary.TotalBytesOut,
+		RequestCount:  summary.RequestCount,
 	})
 }
 

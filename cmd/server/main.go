@@ -100,6 +100,7 @@ func main() {
 
 		// Stats
 		statsHandler := handler.NewStatsHandler()
+		api.GET("/traffic/summary", statsHandler.GetTrafficSummary)
 		api.GET("/traffic/users", statsHandler.GetAllStats)
 		api.GET("/traffic/users/:id", statsHandler.GetUserStats)
 		api.GET("/traffic/clients", statsHandler.GetAllClientStats)

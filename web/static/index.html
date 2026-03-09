@@ -22,13 +22,9 @@
 
     html {
       min-height: 100%;
-      background:
-        radial-gradient(circle at top left, rgba(40, 127, 255, 0.20), transparent 32%),
-        radial-gradient(circle at top right, rgba(10, 51, 122, 0.28), transparent 28%),
-        linear-gradient(180deg, #07111f 0%, #081427 38%, #06101f 100%);
       background-color: var(--bg-base);
-      background-repeat: no-repeat;
-      background-size: cover;
+      overflow-y: scroll;
+      scrollbar-gutter: stable;
     }
 
     body {
@@ -36,15 +32,10 @@
       min-height: 100vh;
       font-family: "Segoe UI", sans-serif;
       color: var(--text);
-      background:
-        radial-gradient(circle at 14% 12%, rgba(56, 148, 255, 0.12), transparent 24%),
-        radial-gradient(circle at 86% 10%, rgba(26, 82, 185, 0.16), transparent 22%),
-        linear-gradient(180deg, rgba(11, 20, 39, 0.12), rgba(5, 11, 21, 0.38));
-      background-repeat: no-repeat;
-      background-size: cover;
-      background-attachment: fixed;
+      background: transparent;
       position: relative;
       overflow-x: hidden;
+      scrollbar-gutter: stable;
     }
 
     body::before {
@@ -53,9 +44,23 @@
       inset: 0;
       pointer-events: none;
       background:
-        linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.02) 50%, transparent 100%),
-        radial-gradient(circle at 50% -10%, rgba(23, 88, 198, 0.12), transparent 45%);
-      opacity: 0.6;
+        radial-gradient(circle at top left, rgba(82, 158, 255, 0.26), transparent 36%),
+        radial-gradient(circle at top right, rgba(38, 104, 224, 0.24), transparent 30%),
+        linear-gradient(180deg, #0d2142 0%, #0b1e3a 40%, #08172e 100%),
+        linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.02) 50%, transparent 100%);
+      opacity: 1;
+      z-index: -2;
+    }
+
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(circle at 18% 14%, rgba(120, 187, 255, 0.10), transparent 26%),
+        radial-gradient(circle at 84% 12%, rgba(73, 141, 255, 0.10), transparent 24%);
+      z-index: -1;
     }
 
     .wrap { width: min(1180px, calc(100% - 24px)); margin: 0 auto; }
@@ -150,6 +155,11 @@
       gap: 16px;
     }
 
+    .stack {
+      display: grid;
+      gap: 16px;
+    }
+
     .section { display: none; }
     .section.active { display: block; }
 
@@ -178,6 +188,7 @@
       width: 100%;
       border-collapse: collapse;
       margin-top: 10px;
+      table-layout: fixed;
     }
 
     th, td {
@@ -190,6 +201,184 @@
     th {
       font-size: 13px;
       color: var(--muted);
+    }
+
+    code {
+      font-size: 12px;
+      word-break: break-all;
+    }
+
+    .user-toolbar {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+
+    .user-search {
+      flex: 1 1 320px;
+      min-width: 240px;
+      height: 46px;
+      padding: 0 16px;
+      border-radius: 999px;
+      border: 1px solid rgba(120, 157, 241, 0.32);
+      background: rgba(8, 20, 41, 0.95);
+      color: var(--text);
+      outline: none;
+      box-shadow: inset 0 0 0 1px rgba(6, 13, 28, 0.35);
+      transition: border-color .18s ease, box-shadow .18s ease;
+    }
+
+    .user-search::placeholder {
+      color: rgba(158, 176, 210, 0.78);
+    }
+
+    .user-search:focus {
+      border-color: rgba(92, 166, 255, 0.78);
+      box-shadow: 0 0 0 3px rgba(45, 142, 255, 0.14), inset 0 0 0 1px rgba(6, 13, 28, 0.35);
+    }
+
+    .user-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .user-rule-card {
+      background:
+        linear-gradient(180deg, rgba(20, 35, 67, 0.96), rgba(11, 22, 44, 0.94)),
+        radial-gradient(circle at top right, rgba(68, 137, 255, 0.16), transparent 34%);
+      color: #eaf2ff;
+      border-radius: 20px;
+      padding: 16px;
+      border: 1px solid rgba(118, 154, 237, 0.20);
+      box-shadow: 0 18px 40px rgba(4, 16, 38, 0.28);
+      display: grid;
+      gap: 14px;
+      overflow: hidden;
+    }
+
+    .user-rule-card h3,
+    .user-rule-card p {
+      margin: 0;
+    }
+
+    .user-card-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+      border-bottom: 1px solid rgba(123, 144, 193, 0.16);
+      padding-bottom: 12px;
+    }
+
+    .user-card-title {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .user-card-title-label {
+      font-size: 13px;
+      color: #8fb5ff;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+    }
+
+    .user-card-name {
+      font-size: 28px;
+      line-height: 1.1;
+      font-weight: 800;
+      color: #f3f7ff;
+      word-break: break-word;
+      text-shadow: 0 3px 18px rgba(53, 130, 255, 0.16);
+    }
+
+    .user-card-id {
+      font-size: 12px;
+      color: #89a0cf;
+      word-break: break-all;
+    }
+
+    .user-card-badges {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .pill.primary {
+      background: rgba(60, 121, 255, 0.18);
+      color: #b9d5ff;
+    }
+
+    .pill.green {
+      background: rgba(76, 175, 80, 0.18);
+      color: #8de0a4;
+    }
+
+    .pill.orange {
+      background: rgba(255, 170, 43, 0.18);
+      color: #ffd08b;
+    }
+
+    .user-card-body {
+      background: rgba(8, 18, 36, 0.62);
+      border-radius: 14px;
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+      border: 1px solid rgba(125, 151, 208, 0.12);
+    }
+
+    .user-card-metric {
+      display: grid;
+      grid-template-columns: 92px 1fr;
+      gap: 10px;
+      align-items: center;
+      font-size: 14px;
+    }
+
+    .user-card-metric-label {
+      color: #86aef8;
+      font-weight: 700;
+    }
+
+    .user-card-metric-value {
+      color: #d8e4ff;
+      font-weight: 600;
+      word-break: break-word;
+    }
+
+    .user-card-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .user-card-actions .btn {
+      width: 100%;
+      justify-content: center;
+      border-radius: 12px;
+      font-weight: 700;
+    }
+
+    .user-card-actions .btn.soft {
+      background: linear-gradient(135deg, #5d71ea, #4ba8f1);
+      border-color: transparent;
+      color: white;
     }
 
     .tag {
@@ -301,14 +490,7 @@
     </section>
 
     <section id="users" class="section">
-      <div class="two">
-        <div class="card">
-          <h2>用户限速规则</h2>
-          <table>
-            <thead><tr><th>ID</th><th>名称</th><th>上传</th><th>下载</th><th>转码</th><th>操作</th></tr></thead>
-            <tbody id="usersTable"></tbody>
-          </table>
-        </div>
+      <div class="stack">
         <div class="card">
           <h2 id="userTitle">新建或编辑用户规则</h2>
           <div class="field"><label for="userId">用户 ID</label><input id="userId"></div>
@@ -326,6 +508,13 @@
             <button class="btn primary" onclick="saveUser()">保存</button>
             <button class="btn" onclick="resetUserForm()">重置</button>
           </div>
+        </div>
+        <div class="card">
+          <div class="user-toolbar">
+            <h2>全部用户</h2>
+            <input id="userSearch" class="user-search" placeholder="搜索用户名或用户 ID" oninput="renderUsers()">
+          </div>
+          <div id="usersList" class="user-grid"></div>
         </div>
       </div>
     </section>
@@ -418,18 +607,21 @@
     let editingUserId = "";
     let editingClientId = "";
     let isRefreshing = false;
-    let currentTrafficRange = "day";
+    let currentTrafficRange = localStorage.getItem("emby_mp_traffic_range") || "day";
+    let cachedUsers = [];
 
-    document.querySelectorAll(".nav button").forEach((btn) => btn.addEventListener("click", () => showSection(btn.dataset.section)));
+    document.querySelectorAll(".nav button").forEach((btn) => btn.addEventListener("click", () => { showSection(btn.dataset.section); }));
 
-    function showSection(section) {
+    async function showSection(section) {
+      localStorage.setItem("emby_mp_section", section);
       document.querySelectorAll(".nav button").forEach((btn) => btn.classList.toggle("active", btn.dataset.section === section));
       document.querySelectorAll(".section").forEach((sec) => sec.classList.toggle("active", sec.id === section));
-      if (section === "overview") loadOverview();
-      if (section === "users") loadUsers();
-      if (section === "clients") loadClients();
-      if (section === "traffic") loadTraffic();
-      if (section === "settings") loadSettings();
+      if (section === "overview") return loadOverview();
+      if (section === "users") return loadUsers();
+      if (section === "clients") return loadClients();
+      if (section === "traffic") return loadTraffic();
+      if (section === "settings") return loadSettings();
+      return Promise.resolve();
     }
 
     async function api(path, options = {}) {
@@ -479,7 +671,7 @@
       document.getElementById("passwordInput").value = password || "";
       setAuthenticatedState(true);
       try {
-        await loadOverview();
+        await showSection(localStorage.getItem("emby_mp_section") || "overview");
       } catch (error) {
         logout(false);
         toast(error.message || "自动登录失败，请重新登录");
@@ -513,7 +705,7 @@
 
         persistAuth(result.authorization, username, password);
         setAuthenticatedState(true);
-        await loadOverview();
+        await showSection(localStorage.getItem("emby_mp_section") || "overview");
       } catch (error) {
         setAuthenticatedState(false);
         toast(`登录失败：${error.message}`);
@@ -536,6 +728,7 @@
 
     function setTrafficRange(range) {
       currentTrafficRange = range;
+      localStorage.setItem("emby_mp_traffic_range", range);
       document.querySelectorAll("#trafficRangeSegment button").forEach((button) => {
         button.classList.toggle("active", button.dataset.range === range);
       });
@@ -566,24 +759,18 @@
     }
 
     async function loadOverview() {
-      const [users, clients, userStats, clientStats] = await Promise.all([
+      const [users, clients, summary, userStats, clientStats] = await Promise.all([
         api("/users"),
         api("/clients"),
+        api("/traffic/summary?since=day"),
         api("/traffic/users?since=day"),
         api("/traffic/clients?since=day")
       ]);
 
       document.getElementById("statUsers").textContent = users.length;
       document.getElementById("statClients").textContent = clients.length;
-
-      let totalIn = 0;
-      let totalOut = 0;
-      userStats.forEach((item) => {
-        totalIn += item.total_bytes_in || 0;
-        totalOut += item.total_bytes_out || 0;
-      });
-      document.getElementById("statIn").textContent = formatBytes(totalIn);
-      document.getElementById("statOut").textContent = formatBytes(totalOut);
+      document.getElementById("statIn").textContent = formatBytes(summary.total_bytes_in);
+      document.getElementById("statOut").textContent = formatBytes(summary.total_bytes_out);
 
       rows("overviewUsers", userStats.slice(0, 8), (item) =>
         `<tr><td>${safe(item.user_name || item.user_id || "未知")}</td><td>${formatBytes(item.total_bytes_in)}</td><td>${formatBytes(item.total_bytes_out)}</td><td>${item.request_count || 0}</td></tr>`,
@@ -595,10 +782,67 @@
     }
 
     async function loadUsers() {
-      const users = await api("/users");
-      rows("usersTable", users, (item) =>
-        `<tr><td><code>${safe(item.id)}</code></td><td>${safe(item.name || "-")}</td><td>${formatSpeed(item.upload_limit)}</td><td>${formatSpeed(item.download_limit)}</td><td><span class="tag">${item.transcode_allowed ? "允许" : "禁止"}</span></td><td><div class="actions"><button class="btn" onclick='editUser(${JSON.stringify(JSON.stringify(item))})'>编辑</button><button class="btn danger" onclick='deleteUser(${JSON.stringify(item.id)})'>删除</button></div></td></tr>`,
-      6, "暂无用户规则");
+      cachedUsers = await api("/users");
+      cachedUsers.sort((a, b) => (a.name || a.id || "").localeCompare(b.name || b.id || "", "zh-CN"));
+      renderUsers();
+    }
+
+    function renderUsers() {
+      const container = document.getElementById("usersList");
+      if (!container) return;
+
+      const keyword = (document.getElementById("userSearch")?.value || "").trim().toLowerCase();
+      const users = cachedUsers.filter((item) => {
+        if (!keyword) return true;
+        const name = String(item.name || "").toLowerCase();
+        const id = String(item.id || "").toLowerCase();
+        return name.includes(keyword) || id.includes(keyword);
+      });
+
+      if (!users.length) {
+        container.innerHTML = `<div class="empty">暂无匹配的用户</div>`;
+        return;
+      }
+
+      container.innerHTML = users.map((item) => {
+        const primaryLimit = item.download_limit > 0 ? `下载 ${formatSpeed(item.download_limit)}` : "下载不限";
+        const uploadLimit = item.upload_limit > 0 ? formatSpeed(item.upload_limit) : "不限";
+        const downloadLimit = item.download_limit > 0 ? formatSpeed(item.download_limit) : "不限";
+        const transcodeLabel = item.transcode_allowed ? "允许转码" : "禁止转码";
+        return `
+          <article class="user-rule-card">
+            <div class="user-card-top">
+              <div class="user-card-title">
+                <div class="user-card-title-label">用户名</div>
+                <div class="user-card-name">${safe(item.name || item.id || "-")}</div>
+                <div class="user-card-id">用户 ID：${safe(item.id)}</div>
+              </div>
+              <div class="user-card-badges">
+                <span class="pill primary">${safe(primaryLimit)}</span>
+                <span class="pill ${item.transcode_allowed ? "green" : "orange"}">${safe(transcodeLabel)}</span>
+              </div>
+            </div>
+            <div class="user-card-body">
+              <div class="user-card-metric">
+                <div class="user-card-metric-label">上传限速</div>
+                <div class="user-card-metric-value">${safe(uploadLimit)}</div>
+              </div>
+              <div class="user-card-metric">
+                <div class="user-card-metric-label">下载限速</div>
+                <div class="user-card-metric-value">${safe(downloadLimit)}</div>
+              </div>
+              <div class="user-card-metric">
+                <div class="user-card-metric-label">转码权限</div>
+                <div class="user-card-metric-value">${safe(transcodeLabel)}</div>
+              </div>
+            </div>
+            <div class="user-card-actions">
+              <button class="btn soft" onclick='editUser(${JSON.stringify(JSON.stringify(item))})'>编辑用户</button>
+              <button class="btn danger" onclick='deleteUser(${JSON.stringify(item.id)})'>删除规则</button>
+            </div>
+          </article>
+        `;
+      }).join("");
     }
 
     function editUser(payload) {
@@ -798,6 +1042,9 @@
     const savedAuth = localStorage.getItem("emby_mp_auth");
     const savedUsername = localStorage.getItem("emby_mp_username") || "";
     const savedPassword = localStorage.getItem("emby_mp_password") || "";
+    document.querySelectorAll("#trafficRangeSegment button").forEach((button) => {
+      button.classList.toggle("active", button.dataset.range === currentTrafficRange);
+    });
     if (savedAuth) {
       bootstrapWithSavedAuth(savedAuth, savedUsername, savedPassword);
     }

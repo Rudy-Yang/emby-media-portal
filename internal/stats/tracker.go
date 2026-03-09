@@ -208,11 +208,12 @@ func GetUserStats(userID string, since time.Time) (*Stats, error) {
 
 	stats := &Stats{UserID: userID}
 	err := db.QueryRow(
-		`SELECT COALESCE(SUM(bytes_in), 0), COALESCE(SUM(bytes_out), 0), COUNT(*)
-		 FROM traffic_stats
-		 WHERE user_id = ? AND timestamp >= ?`,
+		`SELECT COALESCE(MAX(u.name), ''), COALESCE(SUM(t.bytes_in), 0), COALESCE(SUM(t.bytes_out), 0), COUNT(*)
+		 FROM traffic_stats t
+		 LEFT JOIN users u ON u.id = t.user_id
+		 WHERE t.user_id = ? AND t.timestamp >= ?`,
 		userID, since,
-	).Scan(&stats.TotalBytesIn, &stats.TotalBytesOut, &stats.RequestCount)
+	).Scan(&stats.UserName, &stats.TotalBytesIn, &stats.TotalBytesOut, &stats.RequestCount)
 
 	if err != nil {
 		return nil, err
@@ -229,10 +230,12 @@ func GetAllUserStats(since time.Time) ([]Stats, error) {
 	}
 
 	rows, err := db.Query(
-		`SELECT user_id, COALESCE(SUM(bytes_in), 0), COALESCE(SUM(bytes_out), 0), COUNT(*)
-		 FROM traffic_stats
-		 WHERE timestamp >= ? AND user_id <> ''
-		 GROUP BY user_id`,
+		`SELECT t.user_id, COALESCE(MAX(u.name), ''), COALESCE(SUM(t.bytes_in), 0), COALESCE(SUM(t.bytes_out), 0), COUNT(*)
+		 FROM traffic_stats t
+		 LEFT JOIN users u ON u.id = t.user_id
+		 WHERE t.timestamp >= ? AND t.user_id <> ''
+		 GROUP BY t.user_id
+		 ORDER BY COALESCE(SUM(t.bytes_out), 0) DESC`,
 		since,
 	)
 	if err != nil {
@@ -243,13 +246,34 @@ func GetAllUserStats(since time.Time) ([]Stats, error) {
 	var statsList []Stats
 	for rows.Next() {
 		var s Stats
-		if err := rows.Scan(&s.UserID, &s.TotalBytesIn, &s.TotalBytesOut, &s.RequestCount); err != nil {
+		if err := rows.Scan(&s.UserID, &s.UserName, &s.TotalBytesIn, &s.TotalBytesOut, &s.RequestCount); err != nil {
 			return nil, err
 		}
 		statsList = append(statsList, s)
 	}
 
 	return statsList, nil
+}
+
+// GetTrafficSummary gets overall traffic totals regardless of user or client grouping.
+func GetTrafficSummary(since time.Time) (*Stats, error) {
+	db := database.Get()
+	if db == nil {
+		return nil, ErrDatabaseNotAvailable
+	}
+
+	summary := &Stats{}
+	err := db.QueryRow(
+		`SELECT COALESCE(SUM(bytes_in), 0), COALESCE(SUM(bytes_out), 0), COUNT(*)
+		 FROM traffic_stats
+		 WHERE timestamp >= ?`,
+		since,
+	).Scan(&summary.TotalBytesIn, &summary.TotalBytesOut, &summary.RequestCount)
+	if err != nil {
+		return nil, err
+	}
+
+	return summary, nil
 }
 
 // GetServerStats gets aggregated stats for a server
