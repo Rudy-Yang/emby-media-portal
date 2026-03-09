@@ -316,7 +316,7 @@
       display: grid;
       grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
       gap: 12px;
-      align-items: center;
+      align-items: stretch;
       min-height: 360px;
     }
 
@@ -326,6 +326,7 @@
       aspect-ratio: 1;
       margin: 0 auto;
       position: relative;
+      align-self: center;
     }
 
     .pie-wrap svg {
@@ -398,8 +399,10 @@
 
     .chart-side {
       display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
       gap: 12px;
-      align-content: start;
+      align-content: stretch;
+      align-self: stretch;
       min-width: 0;
     }
 
@@ -727,6 +730,10 @@
       margin-top: 4px;
     }
 
+    .client-editor-card .actions {
+      margin-top: 14px;
+    }
+
     code {
       font-size: 12px;
       word-break: break-all;
@@ -789,28 +796,33 @@
     }
 
     .user-card-top {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      align-items: flex-start;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-areas:
+        "label badge"
+        "name name"
+        "id id";
+      gap: 8px 12px;
+      align-items: start;
       border-bottom: 1px solid rgba(123, 144, 193, 0.16);
       padding-bottom: 12px;
     }
 
     .user-card-title {
-      display: grid;
-      gap: 6px;
-      min-width: 0;
+      display: contents;
     }
 
     .user-card-title-label {
+      grid-area: label;
       font-size: 13px;
       color: #8fb5ff;
       font-weight: 700;
       letter-spacing: 0.03em;
+      align-self: center;
     }
 
     .user-card-name {
+      grid-area: name;
       font-size: 21px;
       line-height: 1.12;
       font-weight: 800;
@@ -821,19 +833,23 @@
       overflow: hidden;
       word-break: break-word;
       text-shadow: 0 3px 18px rgba(53, 130, 255, 0.16);
+      margin-top: 4px;
     }
 
     .user-card-id {
+      grid-area: id;
       font-size: 12px;
       color: #89a0cf;
       word-break: break-all;
     }
 
     .user-card-badges {
+      grid-area: badge;
       display: flex;
       gap: 8px;
       flex-wrap: wrap;
       justify-content: flex-end;
+      align-self: start;
     }
 
     .pill {
@@ -960,8 +976,8 @@
 
     .traffic-records-controls select {
       width: auto;
-      min-width: 84px;
-      padding: 8px 12px;
+      min-width: 98px;
+      padding: 8px 38px 8px 14px;
       border-radius: 999px;
       border: 1px solid var(--line);
       background: rgba(12, 21, 39, 0.92);
@@ -1114,6 +1130,7 @@
       <div class="actions">
         <button class="btn" onclick="syncUsers()">同步用户</button>
         <button id="refreshButton" class="btn" onclick="refreshAll()">刷新</button>
+        <button id="restartButton" class="btn" onclick="restartApp()">重启</button>
         <button class="btn danger" onclick="logout(true)">退出登录</button>
       </div>
     </div>
@@ -1433,6 +1450,7 @@
     let hasRealtimeDownloads = false;
     let autoRefreshTimer = null;
     let autoRefreshInFlight = false;
+    let isRestarting = false;
     let clientNameAutofilled = false;
     const tableSortState = {
       overviewUsers: { key: "total_bytes_out", dir: "desc" },
@@ -1451,7 +1469,7 @@
       if (section === "overview") await loadOverview();
       else if (section === "users") await loadUsers();
       else if (section === "clients") await loadClients();
-      else if (section === "traffic") await loadTraffic();
+      else if (section === "traffic") await loadTraffic({ showLoading: true, preserveScroll: false });
       else if (section === "settings") await loadSettings();
       scheduleAutoRefresh();
     }
@@ -1504,12 +1522,21 @@
       button.textContent = "刷新";
     }
 
+    function setRestartButtonState() {
+      const button = document.getElementById("restartButton");
+      if (!button) return;
+      button.disabled = isRestarting;
+      button.textContent = isRestarting ? "重启中..." : "重启";
+    }
+
     function setAuthenticatedState(authenticated) {
       document.getElementById("loginView").classList.toggle("hidden", authenticated);
       document.getElementById("appView").classList.toggle("hidden", !authenticated);
       if (!authenticated) {
         clearTimeout(autoRefreshTimer);
         autoRefreshTimer = null;
+        isRestarting = false;
+        setRestartButtonState();
       }
     }
 
@@ -1575,6 +1602,46 @@
       }
     }
 
+    async function waitForRestart(attempt = 0) {
+      try {
+        const response = await fetch("/api/auth/status", {
+          credentials: "same-origin",
+          cache: "no-store"
+        });
+        if (response.ok || response.status === 401) {
+          window.location.reload();
+          return;
+        }
+      } catch (error) {
+      }
+
+      if (attempt >= 29) {
+        isRestarting = false;
+        setRestartButtonState();
+        toast("重启请求已发送，请稍后手动刷新");
+        return;
+      }
+
+      setTimeout(() => waitForRestart(attempt + 1), 1000);
+    }
+
+    async function restartApp() {
+      if (isRestarting) return;
+      if (!confirm("确定重启程序吗？在 Docker / Unraid / systemd 下会自动拉起。")) return;
+
+      isRestarting = true;
+      setRestartButtonState();
+      try {
+        await api("/system/restart", { method: "POST" });
+        toast("正在重启程序...");
+        setTimeout(() => waitForRestart(), 800);
+      } catch (error) {
+        isRestarting = false;
+        setRestartButtonState();
+        toast(`重启失败：${error.message}`);
+      }
+    }
+
     function setTrafficRange(range) {
       currentTrafficRange = range;
       trafficRecordsPage = 1;
@@ -1583,7 +1650,7 @@
       document.querySelectorAll("#trafficRangeSegment button").forEach((button) => {
         button.classList.toggle("active", button.dataset.range === range);
       });
-      loadTraffic();
+      loadTraffic({ showLoading: false, preserveScroll: true });
     }
 
     function setTrafficView(view) {
@@ -1594,7 +1661,7 @@
       });
       document.getElementById("trafficSummaryPane").classList.toggle("active", view === "summary");
       document.getElementById("trafficRecordsPane").classList.toggle("active", view === "records");
-      loadTraffic();
+      loadTraffic({ showLoading: false, preserveScroll: true });
     }
 
     function setTrafficRecordsPageSize(value) {
@@ -1602,7 +1669,7 @@
       trafficRecordsPage = 1;
       localStorage.setItem("emby_mp_records_page_size", String(trafficRecordsPageSize));
       localStorage.setItem("emby_mp_records_page", "1");
-      loadTraffic();
+      loadTraffic({ showLoading: false, preserveScroll: true });
     }
 
     function changeTrafficRecordsPage(delta) {
@@ -1610,7 +1677,7 @@
       if (nextPage === trafficRecordsPage) return;
       trafficRecordsPage = nextPage;
       localStorage.setItem("emby_mp_records_page", String(trafficRecordsPage));
-      loadTraffic();
+      loadTraffic({ showLoading: false, preserveScroll: true });
     }
 
     function updateTrafficRecordsPagination(total = 0, page = 1, pageSize = 50) {
@@ -1627,6 +1694,15 @@
 
     function currentSection() {
       return localStorage.getItem("emby_mp_section") || "overview";
+    }
+
+    function restoreScrollPosition(scrollTop) {
+      if (scrollTop === null || scrollTop === undefined) return;
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          window.scrollTo(0, scrollTop);
+        });
+      });
     }
 
     function autoRefreshDelay() {
@@ -1652,7 +1728,7 @@
       try {
         const section = currentSection();
         if (section === "overview") await loadOverview();
-        else if (section === "traffic") await loadTraffic();
+        else if (section === "traffic") await loadTraffic({ showLoading: false, preserveScroll: true });
         else if (section === "users") await loadUsers();
         else if (section === "clients") await loadClients();
         else if (section === "settings") await loadSettings();
@@ -1682,7 +1758,14 @@
         setRefreshButtonState();
         try {
           toast("正在刷新...");
-          await Promise.all([loadOverview(), loadUsers(), loadClients(), loadTraffic(), loadSettings()]);
+          const preserveTrafficScroll = currentSection() === "traffic";
+          await Promise.all([
+            loadOverview(),
+            loadUsers(),
+            loadClients(),
+            loadTraffic({ showLoading: !preserveTrafficScroll, preserveScroll: preserveTrafficScroll }),
+            loadSettings()
+          ]);
           const remaining = 300 - (Date.now() - startedAt);
           if (remaining > 0) {
             await new Promise((resolve) => setTimeout(resolve, remaining));
@@ -1811,6 +1894,13 @@
       selectedUserId = match.id || "";
     }
 
+    function syncUserSearchFromEditor(value) {
+      const searchInput = document.getElementById("userSearch");
+      if (!searchInput) return;
+      searchInput.value = String(value || "");
+      renderUsers();
+    }
+
     function syncUserNameField() {
       if (userFieldSyncLock) return;
       const nameInput = document.getElementById("userName");
@@ -1819,9 +1909,11 @@
       const sourceValue = nameInput.value;
       if (!String(sourceValue || "").trim()) {
         setUserFieldHints(null, false);
+        syncUserSearchFromEditor("");
         return;
       }
 
+      syncUserSearchFromEditor(sourceValue);
       const match = findUserMatch("name", sourceValue);
       setUserFieldHints(match, true);
       if (!match) return;
@@ -1936,6 +2028,26 @@
       const amount = Number(document.getElementById(inputId).value) || 0;
       const unit = document.getElementById(unitId).value || "mbps";
       return Math.round((amount * userSpeedUnitFactor(unit)) / 8);
+    }
+
+    function formatMbpsSpeed(value) {
+      const speed = Number(value) || 0;
+      if (!speed) return "不限";
+      const mbps = (speed * 8) / (1000 * 1000);
+      const digits = mbps >= 100 ? 0 : mbps >= 10 ? 1 : 2;
+      return `${mbps.toFixed(digits).replace(/\.0+$/, "").replace(/(\.\d*[1-9])0+$/, "$1")} Mbps`;
+    }
+
+    function setUserSpeedField(inputId, unitId, value) {
+      const speed = bytesToUserSpeedInput(value);
+      const input = document.getElementById(inputId);
+      const unit = document.getElementById(unitId);
+      if (input) {
+        input.value = String(speed.amount || 0);
+      }
+      if (unit) {
+        unit.value = speed.unit || "mbps";
+      }
     }
 
     function compareSortValues(left, right) {
@@ -2145,9 +2257,9 @@
       }
 
       container.innerHTML = users.map((item) => {
-        const primaryLimit = item.download_limit > 0 ? `下载 ${formatSpeed(item.download_limit)}` : "下载不限";
-        const uploadLimit = item.upload_limit > 0 ? formatSpeed(item.upload_limit) : "不限";
-        const downloadLimit = item.download_limit > 0 ? formatSpeed(item.download_limit) : "不限";
+        const primaryLimit = item.download_limit > 0 ? `下载 ${formatMbpsSpeed(item.download_limit)}` : "下载不限";
+        const uploadLimit = formatMbpsSpeed(item.upload_limit);
+        const downloadLimit = formatMbpsSpeed(item.download_limit);
         return `
           <article class="user-rule-card">
             <div class="user-card-top">
@@ -2184,19 +2296,17 @@
       editingUserId = item.id;
       document.getElementById("userTitle").textContent = `编辑用户规则：${item.name || item.id}`;
       document.getElementById("userName").value = item.name || "";
+      syncUserSearchFromEditor(item.name || "");
       setUserFieldHints(item);
-      const upload = bytesToUserSpeedInput(item.upload_limit);
-      const download = bytesToUserSpeedInput(item.download_limit);
-      document.getElementById("userUpload").value = upload.amount;
-      document.getElementById("userUploadUnit").value = upload.unit;
-      document.getElementById("userDownload").value = download.amount;
-      document.getElementById("userDownloadUnit").value = download.unit;
+      setUserSpeedField("userUpload", "userUploadUnit", item.upload_limit);
+      setUserSpeedField("userDownload", "userDownloadUnit", item.download_limit);
     }
 
     function resetUserForm() {
       editingUserId = "";
       document.getElementById("userTitle").textContent = "新建或编辑用户规则";
       document.getElementById("userName").value = "";
+      syncUserSearchFromEditor("");
       setUserFieldHints(null);
       document.getElementById("userUpload").value = 0;
       document.getElementById("userUploadUnit").value = "mbps";
@@ -2330,9 +2440,11 @@
       renderPieChart("trafficClientChart", sortedTrafficClients, "client_name", trafficClientChartTopN);
     }
 
-    async function loadTraffic() {
+    async function loadTraffic(options = {}) {
+      const { showLoading = false, preserveScroll = false } = options;
       const userTopSelect = document.getElementById("trafficUserChartTopN");
       const clientTopSelect = document.getElementById("trafficClientChartTopN");
+      const scrollTop = preserveScroll && currentSection() === "traffic" ? window.scrollY : null;
       if (userTopSelect) userTopSelect.value = String(trafficUserChartTopN);
       if (clientTopSelect) clientTopSelect.value = String(trafficClientChartTopN);
 
@@ -2342,7 +2454,7 @@
         if ((recordsResponse.page || 1) > totalPages && totalPages > 0) {
           trafficRecordsPage = totalPages;
           localStorage.setItem("emby_mp_records_page", String(trafficRecordsPage));
-          return loadTraffic();
+          return loadTraffic(options);
         }
         updateTrafficRecordsPagination(recordsResponse.total, recordsResponse.page || 1, recordsResponse.page_size || trafficRecordsPageSize);
         rows("trafficRecords", recordsResponse.items || [], (item) =>
@@ -2358,15 +2470,18 @@
             <td><button class="btn danger" onclick="deleteTrafficRecord(${Number(item.id)})">删除</button></td>
           </tr>`,
         9, "暂无数据库记录");
+        restoreScrollPosition(scrollTop);
         return;
       }
 
-      rows("trafficUsers", [], () => "", 4, "加载中...");
-      rows("trafficClients", [], () => "", 5, "加载中...");
-      const userChart = document.getElementById("trafficUserChart");
-      const clientChart = document.getElementById("trafficClientChart");
-      if (userChart) userChart.innerHTML = `<div class="empty">加载中...</div>`;
-      if (clientChart) clientChart.innerHTML = `<div class="empty">加载中...</div>`;
+      if (showLoading) {
+        rows("trafficUsers", [], () => "", 4, "加载中...");
+        rows("trafficClients", [], () => "", 5, "加载中...");
+        const userChart = document.getElementById("trafficUserChart");
+        const clientChart = document.getElementById("trafficClientChart");
+        if (userChart) userChart.innerHTML = `<div class="empty">加载中...</div>`;
+        if (clientChart) clientChart.innerHTML = `<div class="empty">加载中...</div>`;
+      }
 
       const token = ++trafficLoadToken;
       const activeUsersPromise = api("/users/active").catch(() => null);
@@ -2377,15 +2492,21 @@
 
       if (token !== trafficLoadToken) return;
       renderTrafficSummary(users, clients);
+      restoreScrollPosition(scrollTop);
 
       const activeUsers = await activeUsersPromise;
       if (token !== trafficLoadToken || !activeUsers) return;
       setActiveUserStates(activeUsers.users || []);
       renderTrafficSummary(users, clients);
+      restoreScrollPosition(scrollTop);
     }
 
     async function refreshTrafficDataViews() {
-      await Promise.all([loadOverview(), loadTraffic()]);
+      const preserveTrafficScroll = currentSection() === "traffic";
+      await Promise.all([
+        loadOverview(),
+        loadTraffic({ showLoading: !preserveTrafficScroll, preserveScroll: preserveTrafficScroll })
+      ]);
     }
 
     async function deleteTrafficRecord(id) {

@@ -49,6 +49,7 @@ func main() {
 	)
 	rulesManager := ratelimit.NewRulesManager(limiterManager)
 	statsTracker := stats.NewTracker(10 * time.Second)
+	defer statsTracker.Stop()
 
 	// Load existing rules from database
 	if err := rulesManager.LoadRulesFromDB(); err != nil {
@@ -58,6 +59,14 @@ func main() {
 	// Create proxy
 	prxy := proxy.NewProxy(identifier, limiterManager, rulesManager, statsTracker)
 	adminPath := config.NormalizeAdminPath(cfg.Server.AdminPath)
+	var server *http.Server
+	systemHandler := handler.NewSystemHandler(func() {
+		log.Println("Restart requested from admin panel")
+		time.Sleep(300 * time.Millisecond)
+		if server != nil {
+			_ = server.Close()
+		}
+	})
 
 	// Setup Gin router
 	gin.SetMode(gin.ReleaseMode)
@@ -113,6 +122,7 @@ func main() {
 		api.DELETE("/traffic/reset", statsHandler.ResetTrafficStats)
 		api.GET("/traffic/servers/:id", statsHandler.GetServerStats)
 		api.DELETE("/traffic/clean", statsHandler.CleanStats)
+		api.POST("/system/restart", systemHandler.Restart)
 	}
 
 	// Static files for admin panel
@@ -163,7 +173,7 @@ func main() {
 	log.Printf("Starting emby-media-portal server on %s", addr)
 	log.Printf("Admin panel available at http://localhost%s%s/", addr, adminPath)
 
-	server := &http.Server{
+	server = &http.Server{
 		Addr:    addr,
 		Handler: router,
 	}
@@ -174,7 +184,6 @@ func main() {
 		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 		<-sigCh
 		log.Println("Shutting down...")
-		statsTracker.Stop()
 		server.Close()
 	}()
 
