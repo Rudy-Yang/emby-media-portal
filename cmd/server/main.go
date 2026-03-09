@@ -59,6 +59,7 @@ func main() {
 
 	// Create proxy
 	prxy := proxy.NewProxy(identifier, limiterManager, rulesManager, transcodeCtrl, statsTracker)
+	adminPath := config.NormalizeAdminPath(cfg.Server.AdminPath)
 
 	// Setup Gin router
 	gin.SetMode(gin.ReleaseMode)
@@ -69,6 +70,8 @@ func main() {
 	// API routes
 	authHandler := handler.NewAuthHandler()
 	router.POST("/api/auth/login", authHandler.Login)
+	router.POST("/api/auth/logout", middleware.OptionalAuth(), authHandler.Logout)
+	router.GET("/api/auth/status", middleware.OptionalAuth(), authHandler.Status)
 
 	api := router.Group("/api")
 	api.Use(middleware.AuthRequired())
@@ -105,15 +108,21 @@ func main() {
 		api.GET("/traffic/users/:id", statsHandler.GetUserStats)
 		api.GET("/traffic/clients", statsHandler.GetAllClientStats)
 		api.GET("/traffic/clients/:id", statsHandler.GetClientStats)
+		api.GET("/traffic/records", statsHandler.ListTrafficEntries)
+		api.DELETE("/traffic/records/:id", statsHandler.DeleteTrafficEntry)
+		api.DELETE("/traffic/reset", statsHandler.ResetTrafficStats)
 		api.GET("/traffic/servers/:id", statsHandler.GetServerStats)
 		api.DELETE("/traffic/clean", statsHandler.CleanStats)
 	}
 
 	// Static files for admin panel
-	router.GET("/admin", func(c *gin.Context) {
-		c.Redirect(302, "/admin/")
+	router.GET(adminPath, func(c *gin.Context) {
+		c.Redirect(302, adminPath+"/")
 	})
-	router.GET("/admin/*filepath", func(c *gin.Context) {
+	router.GET("/favicon.ico", func(c *gin.Context) {
+		c.Status(http.StatusNoContent)
+	})
+	router.GET(adminPath+"/*filepath", func(c *gin.Context) {
 		filepath := c.Param("filepath")
 		if filepath == "/" || filepath == "" {
 			filepath = "/index.html"
@@ -152,7 +161,7 @@ func main() {
 	// Start server
 	addr := cfg.Server.Listen
 	log.Printf("Starting emby-media-portal server on %s", addr)
-	log.Printf("Admin panel available at http://localhost%s/admin/", addr)
+	log.Printf("Admin panel available at http://localhost%s%s/", addr, adminPath)
 
 	server := &http.Server{
 		Addr:    addr,

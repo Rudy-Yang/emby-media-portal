@@ -145,9 +145,12 @@ type DefaultLimitsResponse struct {
 	DefaultDownload      int64  `json:"default_download"`
 	GlobalLimit          int64  `json:"global_limit"`
 	EmbyURL              string `json:"emby_url"`
+	ListenPort           int    `json:"listen_port"`
+	AdminPath            string `json:"admin_path"`
 	AdminUsername        string `json:"admin_username"`
 	EmbyAPIKeyConfigured bool   `json:"emby_api_key_configured"`
 	AdminPasswordSet     bool   `json:"admin_password_set"`
+	RestartRequired      bool   `json:"restart_required,omitempty"`
 }
 
 // GetDefaultLimits returns default rate limits
@@ -165,9 +168,11 @@ func (h *RulesHandler) GetDefaultLimits(c *gin.Context) {
 		DefaultDownload:      download,
 		GlobalLimit:          globalLimit,
 		EmbyURL:              currentConfigValue(func(cfg *config.Config) string { return cfg.Emby.URL }),
+		ListenPort:           currentConfigValueInt(func(cfg *config.Config) int { return config.ListenPort(cfg.Server.Listen) }),
+		AdminPath:            currentConfigValue(func(cfg *config.Config) string { return config.NormalizeAdminPath(cfg.Server.AdminPath) }),
 		AdminUsername:        currentConfigValue(func(cfg *config.Config) string { return cfg.Server.AdminUsername }),
 		EmbyAPIKeyConfigured: currentConfigValue(func(cfg *config.Config) string { return cfg.Emby.APIKey }) != "",
-		AdminPasswordSet:     currentConfigValue(func(cfg *config.Config) string { return cfg.Server.AdminPassword }) != "",
+		AdminPasswordSet:     config.HasConfiguredAdminPassword(config.Get()),
 	})
 }
 
@@ -178,6 +183,8 @@ type UpdateDefaultLimitsRequest struct {
 	GlobalLimit     int64  `json:"global_limit"`
 	EmbyURL         string `json:"emby_url"`
 	EmbyAPIKey      string `json:"emby_api_key"`
+	ListenPort      int    `json:"listen_port"`
+	AdminPath       string `json:"admin_path"`
 	AdminUsername   string `json:"admin_username"`
 	AdminPassword   string `json:"admin_password"`
 }
@@ -208,18 +215,25 @@ func (h *RulesHandler) UpdateDefaultLimits(c *gin.Context) {
 	updated.RateLimits.DefaultUpload = req.DefaultUpload
 	updated.RateLimits.DefaultDownload = req.DefaultDownload
 	updated.RateLimits.GlobalLimit = req.GlobalLimit
+	oldListenPort := config.ListenPort(cfg.Server.Listen)
+	oldAdminPath := config.NormalizeAdminPath(cfg.Server.AdminPath)
 	if req.EmbyURL != "" {
 		updated.Emby.URL = req.EmbyURL
 	}
 	if req.EmbyAPIKey != "" {
 		updated.Emby.APIKey = req.EmbyAPIKey
 	}
+	if req.ListenPort > 0 {
+		updated.Server.Listen = config.WithListenPort(cfg.Server.Listen, req.ListenPort)
+	}
+	updated.Server.AdminPath = config.NormalizeAdminPath(req.AdminPath)
 	if req.AdminUsername != "" {
 		updated.Server.AdminUsername = req.AdminUsername
 	}
 	if req.AdminPassword != "" {
 		updated.Server.AdminPassword = req.AdminPassword
 	}
+	restartRequired := config.ListenPort(updated.Server.Listen) != oldListenPort || updated.Server.AdminPath != oldAdminPath
 
 	config.Update(&updated)
 	if err := config.Save(&updated); err != nil {
@@ -234,10 +248,14 @@ func (h *RulesHandler) UpdateDefaultLimits(c *gin.Context) {
 			DefaultDownload:      req.DefaultDownload,
 			GlobalLimit:          req.GlobalLimit,
 			EmbyURL:              updated.Emby.URL,
+			ListenPort:           config.ListenPort(updated.Server.Listen),
+			AdminPath:            updated.Server.AdminPath,
 			AdminUsername:        updated.Server.AdminUsername,
 			EmbyAPIKeyConfigured: updated.Emby.APIKey != "",
-			AdminPasswordSet:     updated.Server.AdminPassword != "",
+			AdminPasswordSet:     config.HasConfiguredAdminPassword(&updated),
+			RestartRequired:      restartRequired,
 		},
+		"restart_required": restartRequired,
 	})
 }
 
@@ -245,6 +263,14 @@ func currentConfigValue(selector func(*config.Config) string) string {
 	cfg := config.Get()
 	if cfg == nil {
 		return ""
+	}
+	return selector(cfg)
+}
+
+func currentConfigValueInt(selector func(*config.Config) int) int {
+	cfg := config.Get()
+	if cfg == nil {
+		return 0
 	}
 	return selector(cfg)
 }

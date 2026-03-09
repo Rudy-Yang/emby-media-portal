@@ -142,6 +142,30 @@
       cursor: pointer;
     }
 
+    .subnav {
+      display: inline-flex;
+      gap: 8px;
+      padding: 4px;
+      border-radius: 999px;
+      border: 1px solid rgba(120, 157, 241, 0.22);
+      background: rgba(8, 20, 41, 0.76);
+    }
+
+    .subnav button {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      padding: 8px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .subnav button.active {
+      background: linear-gradient(135deg, var(--primary), var(--primary-strong));
+      color: var(--text);
+    }
+
     .grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -184,6 +208,241 @@
       box-shadow: 0 0 0 3px rgba(33, 150, 255, 0.14);
     }
 
+    .input-with-unit {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 108px;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .inline-hint-wrap {
+      position: relative;
+    }
+
+    .inline-hint-wrap input {
+      padding-right: 360px;
+    }
+
+    .inline-hint {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      max-width: min(420px, calc(100% - 20px));
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: rgba(33, 150, 255, 0.18);
+      border: 1px solid rgba(71, 166, 255, 0.34);
+      color: #bfe0ff;
+      font-size: 11px;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: visible;
+      text-overflow: clip;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity .18s ease;
+    }
+
+    .inline-hint.show {
+      opacity: 1;
+    }
+
+    .inline-hint.warning {
+      background: rgba(255, 196, 79, 0.16);
+      border-color: rgba(255, 196, 79, 0.34);
+      color: #ffe3a3;
+    }
+
+    .chart-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 16px;
+      margin: 14px 0 18px;
+    }
+
+    .chart-card {
+      padding: 16px;
+      border-radius: 18px;
+      border: 1px solid rgba(163, 189, 255, 0.14);
+      background: rgba(9, 18, 34, 0.62);
+    }
+
+    .chart-card h3 {
+      margin-bottom: 12px;
+    }
+
+    .chart-shell {
+      display: grid;
+      grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
+      gap: 12px;
+      align-items: center;
+    }
+
+    .pie-wrap {
+      width: 100%;
+      max-width: 220px;
+      aspect-ratio: 1;
+      margin: 0 auto;
+      position: relative;
+    }
+
+    .pie-wrap svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .pie-tooltip {
+      position: absolute;
+      left: 0;
+      top: 0;
+      transform: translate(-9999px, -9999px);
+      display: inline-grid;
+      grid-template-columns: 10px minmax(0, 1fr);
+      gap: 8px;
+      align-items: center;
+      max-width: 220px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(9, 11, 18, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 14px 30px rgba(0, 0, 0, 0.28);
+      backdrop-filter: blur(8px);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.14s ease;
+      z-index: 2;
+    }
+
+    .pie-tooltip.show {
+      opacity: 1;
+    }
+
+    .pie-tooltip-swatch {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+    }
+
+    .pie-tooltip-text {
+      min-width: 0;
+      display: grid;
+      gap: 3px;
+    }
+
+    .pie-tooltip-label {
+      color: #f5f8ff;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.25;
+      word-break: break-word;
+    }
+
+    .pie-tooltip-meta {
+      color: #b4c5e8;
+      font-size: 12px;
+      line-height: 1.2;
+    }
+
+    .pie-slice {
+      transition: transform 0.18s ease, opacity 0.18s ease;
+      transform-origin: 110px 110px;
+    }
+
+    .pie-slice:hover {
+      transform: scale(1.03);
+      opacity: 0.96;
+    }
+
+    .chart-side {
+      display: grid;
+      gap: 12px;
+      align-content: start;
+      min-width: 0;
+    }
+
+    .chart-total {
+      display: grid;
+      gap: 4px;
+    }
+
+    .chart-total-label {
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      color: #7e98c9;
+      text-transform: uppercase;
+    }
+
+    .chart-total strong {
+      font-size: 28px;
+      line-height: 1;
+      display: block;
+      color: #f5f8ff;
+    }
+
+    .chart-legend {
+      display: grid;
+      gap: 8px;
+      align-content: start;
+      max-height: 240px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .chart-legend-item {
+      display: grid;
+      grid-template-columns: 12px minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: start;
+      font-size: 13px;
+      padding: 8px 10px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(154, 183, 255, 0.08);
+      transition: background 0.18s ease, border-color 0.18s ease;
+    }
+
+    .chart-legend-item:hover {
+      background: rgba(74, 128, 228, 0.12);
+      border-color: rgba(93, 149, 255, 0.22);
+    }
+
+    .chart-legend-swatch {
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      margin-top: 3px;
+      box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.04);
+    }
+
+    .chart-legend-main {
+      min-width: 0;
+      display: grid;
+      gap: 4px;
+    }
+
+    .chart-legend-label {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .chart-legend-detail {
+      font-size: 12px;
+      color: #8ea4cf;
+      min-height: 15px;
+      line-height: 1.25;
+      opacity: 0.72;
+      transition: opacity 0.18s ease;
+    }
+
+    .chart-legend-item:hover .chart-legend-detail {
+      opacity: 1;
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;
@@ -201,6 +460,88 @@
     th {
       font-size: 13px;
       color: var(--muted);
+    }
+
+    .sort-btn {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      padding: 0;
+      cursor: pointer;
+      display: inline-grid;
+      grid-template-columns: minmax(0, 1fr) 12px;
+      align-items: center;
+      gap: 6px;
+      width: 100%;
+      text-align: left;
+    }
+
+    .sort-btn::after {
+      content: "↕";
+      font-size: 11px;
+      opacity: 0.55;
+      width: 12px;
+      text-align: center;
+    }
+
+    .sort-btn.active::after {
+      opacity: 1;
+    }
+
+    .sort-btn[data-dir="asc"]::after {
+      content: "↑";
+    }
+
+    .sort-btn[data-dir="desc"]::after {
+      content: "↓";
+    }
+
+    .clients-rules-table th:nth-child(1),
+    .clients-rules-table td:nth-child(1) {
+      width: 16%;
+    }
+
+    .clients-rules-table th:nth-child(2),
+    .clients-rules-table td:nth-child(2) {
+      width: 18%;
+    }
+
+    .clients-rules-table th:nth-child(3),
+    .clients-rules-table td:nth-child(3) {
+      width: 28%;
+    }
+
+    .clients-rules-table th:nth-child(4),
+    .clients-rules-table td:nth-child(4),
+    .clients-rules-table th:nth-child(5),
+    .clients-rules-table td:nth-child(5) {
+      width: 12%;
+      white-space: nowrap;
+    }
+
+    .clients-rules-table th:nth-child(6),
+    .clients-rules-table td:nth-child(6) {
+      width: 14%;
+    }
+
+    .clients-rules-table code {
+      display: inline-block;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      vertical-align: bottom;
+    }
+
+    .clients-rules-table .actions {
+      justify-content: flex-start;
+      flex-wrap: nowrap;
+    }
+
+    .clients-rules-table .actions .btn {
+      white-space: nowrap;
     }
 
     code {
@@ -287,10 +628,14 @@
     }
 
     .user-card-name {
-      font-size: 28px;
-      line-height: 1.1;
+      font-size: 21px;
+      line-height: 1.12;
       font-weight: 800;
       color: #f3f7ff;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      overflow: hidden;
       word-break: break-word;
       text-shadow: 0 3px 18px rgba(53, 130, 255, 0.16);
     }
@@ -396,6 +741,39 @@
       padding: 18px 0;
     }
 
+    .traffic-pane {
+      display: none;
+      margin-top: 12px;
+    }
+
+    .traffic-pane.active {
+      display: block;
+    }
+
+    .record-table td:last-child,
+    .record-table th:last-child {
+      width: 72px;
+      text-align: center;
+    }
+
+    .record-meta {
+      display: grid;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .record-title {
+      font-weight: 700;
+      color: #eef4ff;
+      word-break: break-word;
+    }
+
+    .record-subtitle {
+      color: var(--muted);
+      font-size: 12px;
+      word-break: break-word;
+    }
+
     .toast {
       position: fixed;
       right: 18px;
@@ -445,7 +823,7 @@
       </div>
       <div class="actions">
         <button class="btn" onclick="syncUsers()">同步用户</button>
-        <button class="btn" onclick="refreshAll()">刷新</button>
+        <button id="refreshButton" class="btn" onclick="refreshAll()">刷新</button>
         <button class="btn danger" onclick="logout(true)">退出登录</button>
       </div>
     </div>
@@ -471,8 +849,13 @@
             <h2>用户流量</h2>
             <span class="muted">24 小时</span>
           </div>
-          <table>
-            <thead><tr><th>用户</th><th>入站</th><th>出站</th><th>请求数</th></tr></thead>
+          <table class="clients-rules-table">
+            <thead><tr>
+              <th><button class="sort-btn" data-sort-table="overviewUsers" data-sort-key="user_name" onclick="toggleTableSort('overviewUsers','user_name')">用户</button></th>
+              <th><button class="sort-btn" data-sort-table="overviewUsers" data-sort-key="total_bytes_in" onclick="toggleTableSort('overviewUsers','total_bytes_in')">入站</button></th>
+              <th><button class="sort-btn" data-sort-table="overviewUsers" data-sort-key="total_bytes_out" onclick="toggleTableSort('overviewUsers','total_bytes_out')">出站</button></th>
+              <th><button class="sort-btn" data-sort-table="overviewUsers" data-sort-key="request_count" onclick="toggleTableSort('overviewUsers','request_count')">请求数</button></th>
+            </tr></thead>
             <tbody id="overviewUsers"></tbody>
           </table>
         </div>
@@ -482,7 +865,11 @@
             <span class="muted">24 小时</span>
           </div>
           <table>
-            <thead><tr><th>客户端</th><th>出站</th><th>请求数</th></tr></thead>
+            <thead><tr>
+              <th><button class="sort-btn" data-sort-table="overviewClients" data-sort-key="client_name" onclick="toggleTableSort('overviewClients','client_name')">客户端</button></th>
+              <th><button class="sort-btn" data-sort-table="overviewClients" data-sort-key="total_bytes_out" onclick="toggleTableSort('overviewClients','total_bytes_out')">出站</button></th>
+              <th><button class="sort-btn" data-sort-table="overviewClients" data-sort-key="request_count" onclick="toggleTableSort('overviewClients','request_count')">请求数</button></th>
+            </tr></thead>
             <tbody id="overviewClients"></tbody>
           </table>
         </div>
@@ -493,10 +880,35 @@
       <div class="stack">
         <div class="card">
           <h2 id="userTitle">新建或编辑用户规则</h2>
-          <div class="field"><label for="userId">用户 ID</label><input id="userId"></div>
-          <div class="field"><label for="userName">名称</label><input id="userName"></div>
-          <div class="field"><label for="userUpload">上传限速（bytes/s）</label><input id="userUpload" type="number" value="0"></div>
-          <div class="field"><label for="userDownload">下载限速（bytes/s）</label><input id="userDownload" type="number" value="0"></div>
+          <div class="field">
+            <label for="userName">名称</label>
+            <div class="inline-hint-wrap">
+              <input id="userName" oninput="syncUserNameField()">
+              <div id="userNameHint" class="inline-hint"></div>
+            </div>
+          </div>
+          <div class="field">
+            <label for="userUpload">上传限速</label>
+            <div class="input-with-unit">
+              <input id="userUpload" type="number" min="0" step="0.01" value="0">
+              <select id="userUploadUnit">
+                <option value="mbps" selected>Mbps</option>
+                <option value="kbps">Kbps</option>
+                <option value="bps">bps</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label for="userDownload">下载限速</label>
+            <div class="input-with-unit">
+              <input id="userDownload" type="number" min="0" step="0.01" value="0">
+              <select id="userDownloadUnit">
+                <option value="mbps" selected>Mbps</option>
+                <option value="kbps">Kbps</option>
+                <option value="bps">bps</option>
+              </select>
+            </div>
+          </div>
           <div class="field">
             <label for="userTranscode">转码权限</label>
             <select id="userTranscode">
@@ -524,17 +936,44 @@
         <div class="card">
           <h2>按 User-Agent 识别的客户端</h2>
           <table>
-            <thead><tr><th>ID</th><th>客户端名称</th><th>User-Agent 规则</th><th>上传</th><th>下载</th><th>操作</th></tr></thead>
+            <thead><tr>
+              <th><button class="sort-btn" data-sort-table="clientsTable" data-sort-key="id" onclick="toggleTableSort('clientsTable','id')">规则键</button></th>
+              <th><button class="sort-btn" data-sort-table="clientsTable" data-sort-key="name" onclick="toggleTableSort('clientsTable','name')">客户端名称</button></th>
+              <th><button class="sort-btn" data-sort-table="clientsTable" data-sort-key="match_value" onclick="toggleTableSort('clientsTable','match_value')">User-Agent 规则</button></th>
+              <th><button class="sort-btn" data-sort-table="clientsTable" data-sort-key="upload_limit" onclick="toggleTableSort('clientsTable','upload_limit')">上传</button></th>
+              <th><button class="sort-btn" data-sort-table="clientsTable" data-sort-key="download_limit" onclick="toggleTableSort('clientsTable','download_limit')">下载</button></th>
+              <th>操作</th>
+            </tr></thead>
             <tbody id="clientsTable"></tbody>
           </table>
         </div>
         <div class="card">
           <h2 id="clientTitle">新建或编辑客户端 User-Agent 规则</h2>
-          <div class="field"><label for="clientRuleId">规则 ID</label><input id="clientRuleId" placeholder="例如 infuse-ua"></div>
           <div class="field"><label for="clientRuleName">客户端名称</label><input id="clientRuleName" placeholder="例如 Infuse"></div>
           <div class="field"><label for="clientMatchValue">User-Agent 关键字或完整值</label><input id="clientMatchValue" placeholder="例如 infuse"></div>
-          <div class="field"><label for="clientUpload">上传限速（bytes/s）</label><input id="clientUpload" type="number" value="0"></div>
-          <div class="field"><label for="clientDownload">下载限速（bytes/s）</label><input id="clientDownload" type="number" value="0"></div>
+          <div class="field">
+            <label for="clientUpload">上传限速</label>
+            <div class="input-with-unit">
+              <input id="clientUpload" type="number" min="0" step="0.01" value="0">
+              <select id="clientUploadUnit">
+                <option value="mbps" selected>Mbps</option>
+                <option value="kbps">Kbps</option>
+                <option value="bps">bps</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label for="clientDownload">下载限速</label>
+            <div class="input-with-unit">
+              <input id="clientDownload" type="number" min="0" step="0.01" value="0">
+              <select id="clientDownloadUnit">
+                <option value="mbps" selected>Mbps</option>
+                <option value="kbps">Kbps</option>
+                <option value="bps">bps</option>
+              </select>
+            </div>
+          </div>
+          <div class="muted">规则键会根据客户端名称自动生成；编辑现有规则时会保留原键。</div>
           <div class="actions">
             <button class="btn primary" onclick="saveClient()">保存</button>
             <button class="btn" onclick="resetClientForm()">重置</button>
@@ -548,6 +987,10 @@
         <div class="row" style="justify-content:space-between">
           <h2>流量统计</h2>
           <div class="actions">
+            <div id="trafficViewSegment" class="subnav">
+              <button class="active" data-view="summary" onclick="setTrafficView('summary')">汇总统计</button>
+              <button data-view="records" onclick="setTrafficView('records')">数据库记录</button>
+            </div>
             <div id="trafficRangeSegment" class="segment">
               <button class="active" data-range="day" onclick="setTrafficRange('day')">最近 24 小时</button>
               <button data-range="week" onclick="setTrafficRange('week')">最近 7 天</button>
@@ -556,21 +999,54 @@
             <button class="btn" onclick="loadTraffic()">刷新统计</button>
           </div>
         </div>
-        <div class="two" style="margin-top:12px">
-          <div>
-            <h3>按用户</h3>
-            <table>
-              <thead><tr><th>用户</th><th>入站</th><th>出站</th><th>请求数</th></tr></thead>
-              <tbody id="trafficUsers"></tbody>
-            </table>
+        <div id="trafficSummaryPane" class="traffic-pane active">
+          <div class="chart-grid">
+            <div class="chart-card">
+              <h3>用户出站占比</h3>
+              <div id="trafficUserChart"></div>
+            </div>
+            <div class="chart-card">
+              <h3>客户端出站占比</h3>
+              <div id="trafficClientChart"></div>
+            </div>
           </div>
-          <div>
-            <h3>按客户端</h3>
-            <table>
-              <thead><tr><th>客户端</th><th>设备</th><th>入站</th><th>出站</th><th>请求数</th></tr></thead>
-              <tbody id="trafficClients"></tbody>
-            </table>
+          <div class="two">
+            <div>
+              <h3>按用户</h3>
+              <table>
+                <thead><tr>
+                  <th><button class="sort-btn" data-sort-table="trafficUsers" data-sort-key="user_name" onclick="toggleTableSort('trafficUsers','user_name')">用户</button></th>
+                  <th><button class="sort-btn" data-sort-table="trafficUsers" data-sort-key="total_bytes_in" onclick="toggleTableSort('trafficUsers','total_bytes_in')">入站</button></th>
+                  <th><button class="sort-btn" data-sort-table="trafficUsers" data-sort-key="total_bytes_out" onclick="toggleTableSort('trafficUsers','total_bytes_out')">出站</button></th>
+                  <th><button class="sort-btn" data-sort-table="trafficUsers" data-sort-key="request_count" onclick="toggleTableSort('trafficUsers','request_count')">请求数</button></th>
+                </tr></thead>
+                <tbody id="trafficUsers"></tbody>
+              </table>
+            </div>
+            <div>
+              <h3>按客户端</h3>
+              <table>
+                <thead><tr>
+                  <th><button class="sort-btn" data-sort-table="trafficClients" data-sort-key="client_name" onclick="toggleTableSort('trafficClients','client_name')">客户端</button></th>
+                  <th><button class="sort-btn" data-sort-table="trafficClients" data-sort-key="device_name" onclick="toggleTableSort('trafficClients','device_name')">设备</button></th>
+                  <th><button class="sort-btn" data-sort-table="trafficClients" data-sort-key="total_bytes_in" onclick="toggleTableSort('trafficClients','total_bytes_in')">入站</button></th>
+                  <th><button class="sort-btn" data-sort-table="trafficClients" data-sort-key="total_bytes_out" onclick="toggleTableSort('trafficClients','total_bytes_out')">出站</button></th>
+                  <th><button class="sort-btn" data-sort-table="trafficClients" data-sort-key="request_count" onclick="toggleTableSort('trafficClients','request_count')">请求数</button></th>
+                </tr></thead>
+                <tbody id="trafficClients"></tbody>
+              </table>
+            </div>
           </div>
+        </div>
+        <div id="trafficRecordsPane" class="traffic-pane">
+          <div class="row" style="justify-content:space-between; margin-bottom:12px">
+            <div class="muted">展示当前时间范围内的数据库记录，可逐条删除。</div>
+            <button class="btn danger" onclick="resetTrafficDatabase()">清空数据库</button>
+          </div>
+          <table class="record-table">
+            <thead><tr><th>时间</th><th>名称</th><th>类型</th><th>客户端</th><th>设备</th><th>路径</th><th>入站</th><th>出站</th><th>操作</th></tr></thead>
+            <tbody id="trafficRecords"></tbody>
+          </table>
         </div>
       </div>
     </section>
@@ -580,6 +1056,8 @@
         <div class="card">
           <h2>系统设置</h2>
           <div class="field"><label for="embyUrl">Emby 地址</label><input id="embyUrl" placeholder="https://emby.example.com"></div>
+          <div class="field"><label for="listenPort">监听端口</label><input id="listenPort" type="number" min="1" max="65535" placeholder="8095"></div>
+          <div class="field"><label for="adminPath">管理入口路径</label><input id="adminPath" placeholder="/admin"></div>
           <div class="field"><label for="embyApiKey">Emby API Key</label><input id="embyApiKey" type="password" placeholder="留空则保持当前值"></div>
           <div class="field"><label for="defaultUpload">默认上传限速</label><input id="defaultUpload" type="number" value="0"></div>
           <div class="field"><label for="defaultDownload">默认下载限速</label><input id="defaultDownload" type="number" value="0"></div>
@@ -603,12 +1081,22 @@
   <div id="toast" class="toast"></div>
 
   <script>
-    let authHeader = "";
     let editingUserId = "";
     let editingClientId = "";
     let isRefreshing = false;
+    let pendingRefresh = false;
     let currentTrafficRange = localStorage.getItem("emby_mp_traffic_range") || "day";
+    let currentTrafficView = localStorage.getItem("emby_mp_traffic_view") || "summary";
     let cachedUsers = [];
+    let userFieldSyncLock = false;
+    let selectedUserId = "";
+    const tableSortState = {
+      overviewUsers: { key: "total_bytes_out", dir: "desc" },
+      overviewClients: { key: "total_bytes_out", dir: "desc" },
+      clientsTable: { key: "name", dir: "asc" },
+      trafficUsers: { key: "total_bytes_out", dir: "desc" },
+      trafficClients: { key: "total_bytes_out", dir: "desc" }
+    };
 
     document.querySelectorAll(".nav button").forEach((btn) => btn.addEventListener("click", () => { showSection(btn.dataset.section); }));
 
@@ -627,9 +1115,9 @@
     async function api(path, options = {}) {
       const response = await fetch(`/api${path}`, {
         ...options,
+        credentials: "same-origin",
         headers: {
           "Content-Type": "application/json",
-          ...(authHeader ? { "Authorization": authHeader } : {}),
           ...(options.headers || {})
         }
       });
@@ -647,10 +1135,29 @@
 
     function toast(message) {
       const el = document.getElementById("toast");
+      el.classList.remove("show");
+      void el.offsetWidth;
       el.textContent = message;
       el.classList.add("show");
       clearTimeout(toast.timer);
       toast.timer = setTimeout(() => el.classList.remove("show"), 2600);
+    }
+
+    function setRefreshButtonState() {
+      const button = document.getElementById("refreshButton");
+      if (!button) return;
+      if (isRefreshing && pendingRefresh) {
+        button.disabled = true;
+        button.textContent = "刷新中，已排队";
+        return;
+      }
+      if (isRefreshing) {
+        button.disabled = true;
+        button.textContent = "刷新中...";
+        return;
+      }
+      button.disabled = false;
+      button.textContent = "刷新";
     }
 
     function setAuthenticatedState(authenticated) {
@@ -658,14 +1165,11 @@
       document.getElementById("appView").classList.toggle("hidden", !authenticated);
     }
 
-    function persistAuth(authorization, username) {
-      authHeader = authorization;
-      sessionStorage.setItem("emby_mp_auth", authorization);
+    function persistIdentity(username) {
       localStorage.setItem("emby_mp_username", username);
     }
 
-    async function bootstrapWithSavedAuth(savedAuth, username) {
-      authHeader = savedAuth;
+    async function bootstrapWithSession(username) {
       document.getElementById("usernameInput").value = username || "";
       setAuthenticatedState(true);
       try {
@@ -701,7 +1205,7 @@
           return payload;
         });
 
-        persistAuth(result.authorization, username);
+        persistIdentity(username);
         setAuthenticatedState(true);
         await showSection(localStorage.getItem("emby_mp_section") || "overview");
       } catch (error) {
@@ -713,9 +1217,8 @@
       }
     }
 
-    function logout(showToast = false) {
-      authHeader = "";
-      sessionStorage.removeItem("emby_mp_auth");
+    async function logout(showToast = false) {
+      await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" }).catch(() => null);
       localStorage.removeItem("emby_mp_username");
       document.getElementById("passwordInput").value = "";
       setAuthenticatedState(false);
@@ -733,17 +1236,48 @@
       loadTraffic();
     }
 
+    function setTrafficView(view) {
+      currentTrafficView = view;
+      localStorage.setItem("emby_mp_traffic_view", view);
+      document.querySelectorAll("#trafficViewSegment button").forEach((button) => {
+        button.classList.toggle("active", button.dataset.view === view);
+      });
+      document.getElementById("trafficSummaryPane").classList.toggle("active", view === "summary");
+      document.getElementById("trafficRecordsPane").classList.toggle("active", view === "records");
+      loadTraffic();
+    }
+
     async function refreshAll() {
-      if (isRefreshing) return;
-      isRefreshing = true;
-      try {
-        await Promise.all([loadOverview(), loadUsers(), loadClients(), loadTraffic(), loadSettings()]);
-        toast("数据已刷新");
-      } catch (error) {
-        toast(`刷新失败：${error.message}`);
-      } finally {
-        isRefreshing = false;
+      if (isRefreshing) {
+        pendingRefresh = true;
+        setRefreshButtonState();
+        toast("正在刷新，已加入队列");
+        return;
       }
+
+      isRefreshing = true;
+      setRefreshButtonState();
+      do {
+        const startedAt = Date.now();
+        pendingRefresh = false;
+        setRefreshButtonState();
+        try {
+          toast("正在刷新...");
+          await Promise.all([loadOverview(), loadUsers(), loadClients(), loadTraffic(), loadSettings()]);
+          const remaining = 300 - (Date.now() - startedAt);
+          if (remaining > 0) {
+            await new Promise((resolve) => setTimeout(resolve, remaining));
+          }
+          toast("数据已刷新");
+        } catch (error) {
+          pendingRefresh = false;
+          toast(`刷新失败：${error.message}`);
+          break;
+        }
+      } while (pendingRefresh);
+
+      isRefreshing = false;
+      setRefreshButtonState();
     }
 
     async function syncUsers() {
@@ -770,11 +1304,11 @@
       document.getElementById("statIn").textContent = formatBytes(summary.total_bytes_in);
       document.getElementById("statOut").textContent = formatBytes(summary.total_bytes_out);
 
-      rows("overviewUsers", userStats.slice(0, 8), (item) =>
+      rows("overviewUsers", sortItems(userStats, "overviewUsers").slice(0, 8), (item) =>
         `<tr><td>${safe(item.user_name || item.user_id || "未知")}</td><td>${formatBytes(item.total_bytes_in)}</td><td>${formatBytes(item.total_bytes_out)}</td><td>${item.request_count || 0}</td></tr>`,
       4, "暂无用户数据");
 
-      rows("overviewClients", clientStats.slice(0, 8), (item) =>
+      rows("overviewClients", sortItems(clientStats, "overviewClients").slice(0, 8), (item) =>
         `<tr><td>${safe(item.client_name || item.client_id || "未知")}</td><td>${formatBytes(item.total_bytes_out)}</td><td>${item.request_count || 0}</td></tr>`,
       3, "暂无客户端数据");
     }
@@ -783,6 +1317,254 @@
       cachedUsers = await api("/users");
       cachedUsers.sort((a, b) => (a.name || a.id || "").localeCompare(b.name || b.id || "", "zh-CN"));
       renderUsers();
+    }
+
+    function findUserMatch(source, value) {
+      const keyword = String(value || "").trim().toLowerCase();
+      if (!keyword) return null;
+      return cachedUsers.find((item) => {
+        const id = String(item.id || "").toLowerCase();
+        const name = String(item.name || "").toLowerCase();
+        if (source === "id") {
+          return id === keyword || id.startsWith(keyword) || name === keyword;
+        }
+        return name === keyword || name.startsWith(keyword) || id === keyword;
+      }) || null;
+    }
+
+    function setUserFieldHints(match, hasInput = false) {
+      const nameHint = document.getElementById("userNameHint");
+      if (!nameHint) return;
+      nameHint.classList.remove("warning");
+      if (!match && !hasInput) {
+        nameHint.textContent = "";
+        nameHint.classList.remove("show");
+        selectedUserId = "";
+        return;
+      }
+      if (!match) {
+        nameHint.textContent = "未发现匹配 ID";
+        nameHint.classList.add("show");
+        nameHint.classList.add("warning");
+        selectedUserId = "";
+        return;
+      }
+      nameHint.textContent = match.id || "-";
+      nameHint.classList.add("show");
+      selectedUserId = match.id || "";
+    }
+
+    function syncUserNameField() {
+      if (userFieldSyncLock) return;
+      const nameInput = document.getElementById("userName");
+      if (!nameInput) return;
+
+      const sourceValue = nameInput.value;
+      if (!String(sourceValue || "").trim()) {
+        setUserFieldHints(null, false);
+        return;
+      }
+
+      const match = findUserMatch("name", sourceValue);
+      setUserFieldHints(match, true);
+      if (!match) return;
+    }
+
+    function userSpeedUnitFactor(unit) {
+      if (unit === "mbps") return 1000 * 1000;
+      if (unit === "kbps") return 1000;
+      return 1;
+    }
+
+    function bytesToUserSpeedInput(value) {
+      const bytes = Number(value) || 0;
+      if (!bytes) return { amount: 0, unit: "mbps" };
+      const bits = bytes * 8;
+      if (bits % (1000 * 1000) === 0) return { amount: bits / (1000 * 1000), unit: "mbps" };
+      if (bits % 1000 === 0) return { amount: bits / 1000, unit: "kbps" };
+      return { amount: bits, unit: "bps" };
+    }
+
+    function userSpeedInputToBytes(inputId, unitId) {
+      const amount = Number(document.getElementById(inputId).value) || 0;
+      const unit = document.getElementById(unitId).value || "mbps";
+      return Math.round((amount * userSpeedUnitFactor(unit)) / 8);
+    }
+
+    function compareSortValues(left, right) {
+      if (typeof left === "number" || typeof right === "number") {
+        return (Number(left) || 0) - (Number(right) || 0);
+      }
+      return String(left || "").localeCompare(String(right || ""), "zh-CN", { numeric: true, sensitivity: "base" });
+    }
+
+    function sortItems(items, tableKey) {
+      const state = tableSortState[tableKey];
+      if (!state) return [...(items || [])];
+      return [...(items || [])].sort((a, b) => {
+        const result = compareSortValues(a?.[state.key], b?.[state.key]);
+        return state.dir === "asc" ? result : -result;
+      });
+    }
+
+    function updateSortButtons() {
+      document.querySelectorAll(".sort-btn").forEach((button) => {
+        const state = tableSortState[button.dataset.sortTable];
+        const active = state && state.key === button.dataset.sortKey;
+        button.classList.toggle("active", !!active);
+        button.dataset.dir = active ? state.dir : "";
+      });
+    }
+
+    async function toggleTableSort(tableKey, key) {
+      const state = tableSortState[tableKey];
+      if (!state) return;
+      if (state.key === key) {
+        state.dir = state.dir === "asc" ? "desc" : "asc";
+      } else {
+        state.key = key;
+        state.dir = ["user_name", "client_name", "device_name", "name", "id", "match_value"].includes(key) ? "asc" : "desc";
+      }
+      updateSortButtons();
+      if (tableKey === "overviewUsers" || tableKey === "overviewClients") return loadOverview();
+      if (tableKey === "clientsTable") return loadClients();
+      if (tableKey === "trafficUsers" || tableKey === "trafficClients") return loadTraffic();
+    }
+
+    function chartPalette(index) {
+      const colors = [
+        "#d3847b",
+        "#b091c8",
+        "#76a6c9",
+        "#71c2b3",
+        "#79bf8f",
+        "#e8cf68",
+        "#efb476",
+        "#cfd3d8",
+        "#7db4df"
+      ];
+      return colors[index % colors.length];
+    }
+
+    function polarToCartesian(cx, cy, radius, angle) {
+      const radians = (angle - 90) * Math.PI / 180;
+      return {
+        x: cx + radius * Math.cos(radians),
+        y: cy + radius * Math.sin(radians)
+      };
+    }
+
+    function pieSlicePath(cx, cy, radius, startAngle, endAngle) {
+      const start = polarToCartesian(cx, cy, radius, endAngle);
+      const end = polarToCartesian(cx, cy, radius, startAngle);
+      const largeArcFlag = endAngle - startAngle > 180 ? 1 : 0;
+      return `M ${cx} ${cy} L ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArcFlag} 0 ${end.x} ${end.y} Z`;
+    }
+
+    function buildPieSeries(items, labelKey) {
+      const rows = (items || [])
+        .map((item) => ({
+          label: item[labelKey] || item.user_id || item.client_id || "未知",
+          value: Number(item.total_bytes_out) || 0
+        }))
+        .filter((item) => item.value > 0)
+        .sort((a, b) => b.value - a.value);
+
+      const top = rows.slice(0, 8);
+      const otherValue = rows.slice(8).reduce((sum, item) => sum + item.value, 0);
+      if (otherValue > 0) {
+        top.push({ label: "其他", value: otherValue });
+      }
+      return top;
+    }
+
+    function renderPieChart(containerId, items, labelKey) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+
+      const series = buildPieSeries(items, labelKey);
+      const total = series.reduce((sum, item) => sum + item.value, 0);
+      if (!total) {
+        container.innerHTML = `<div class="empty">暂无可绘制的流量数据</div>`;
+        return;
+      }
+
+      let currentAngle = 0;
+      const slices = series.map((item, index) => {
+        const angle = (item.value / total) * 360;
+        const path = pieSlicePath(110, 110, 100, currentAngle, currentAngle + angle);
+        currentAngle += angle;
+        const color = chartPalette(index);
+        const percent = ((item.value / total) * 100).toFixed(1);
+        return { ...item, color, path, percent };
+      });
+
+      container.innerHTML = `
+        <div class="chart-shell">
+          <div class="pie-wrap">
+            <div class="pie-tooltip" aria-hidden="true">
+              <span class="pie-tooltip-swatch"></span>
+              <div class="pie-tooltip-text">
+                <div class="pie-tooltip-label"></div>
+                <div class="pie-tooltip-meta"></div>
+              </div>
+            </div>
+            <svg viewBox="0 0 220 220" aria-hidden="true">
+              ${slices.map((slice) => `<path class="pie-slice" data-label="${safe(slice.label)}" data-value="${slice.value}" data-percent="${slice.percent}" data-color="${slice.color}" d="${slice.path}" fill="${slice.color}" stroke="#08172e" stroke-width="2"></path>`).join("")}
+            </svg>
+          </div>
+          <div class="chart-side">
+            <div class="chart-total">
+              <span class="chart-total-label">总出站</span>
+              <strong>${formatBytes(total)}</strong>
+            </div>
+            <div class="chart-legend">
+            ${slices.map((slice) => `
+              <div class="chart-legend-item">
+                <span class="chart-legend-swatch" style="background:${slice.color}"></span>
+                <div class="chart-legend-main">
+                  <span class="chart-legend-label" title="${safe(slice.label)}">${safe(slice.label)}</span>
+                  <span class="chart-legend-detail">${formatBytes(slice.value)} · ${slice.percent}%</span>
+                </div>
+                <span class="muted">${slice.percent}%</span>
+              </div>
+            `).join("")}
+            </div>
+          </div>
+        </div>
+      `;
+
+      const pieWrap = container.querySelector(".pie-wrap");
+      const tooltip = pieWrap?.querySelector(".pie-tooltip");
+      const swatch = tooltip?.querySelector(".pie-tooltip-swatch");
+      const label = tooltip?.querySelector(".pie-tooltip-label");
+      const meta = tooltip?.querySelector(".pie-tooltip-meta");
+
+      if (!pieWrap || !tooltip || !swatch || !label || !meta) return;
+
+      const moveTooltip = (event) => {
+        const rect = pieWrap.getBoundingClientRect();
+        const offsetX = event.clientX - rect.left + 14;
+        const offsetY = event.clientY - rect.top - 18;
+        const nextX = Math.max(8, Math.min(offsetX, rect.width - tooltip.offsetWidth - 8));
+        const nextY = Math.max(8, Math.min(offsetY, rect.height - tooltip.offsetHeight - 8));
+        tooltip.style.transform = `translate(${nextX}px, ${nextY}px)`;
+      };
+
+      pieWrap.querySelectorAll(".pie-slice").forEach((slice) => {
+        slice.addEventListener("mouseenter", (event) => {
+          swatch.style.background = slice.dataset.color || "#7db4df";
+          label.textContent = slice.dataset.label || "未知";
+          meta.textContent = `${formatBytes(Number(slice.dataset.value) || 0)} · ${slice.dataset.percent || "0.0"}%`;
+          tooltip.classList.add("show");
+          moveTooltip(event);
+        });
+        slice.addEventListener("mousemove", moveTooltip);
+        slice.addEventListener("mouseleave", () => {
+          tooltip.classList.remove("show");
+          tooltip.style.transform = "translate(-9999px, -9999px)";
+        });
+      });
     }
 
     function renderUsers() {
@@ -847,26 +1629,33 @@
       const item = JSON.parse(payload);
       editingUserId = item.id;
       document.getElementById("userTitle").textContent = `编辑用户规则：${item.name || item.id}`;
-      document.getElementById("userId").value = item.id || "";
       document.getElementById("userName").value = item.name || "";
-      document.getElementById("userUpload").value = item.upload_limit || 0;
-      document.getElementById("userDownload").value = item.download_limit || 0;
+      setUserFieldHints(item);
+      const upload = bytesToUserSpeedInput(item.upload_limit);
+      const download = bytesToUserSpeedInput(item.download_limit);
+      document.getElementById("userUpload").value = upload.amount;
+      document.getElementById("userUploadUnit").value = upload.unit;
+      document.getElementById("userDownload").value = download.amount;
+      document.getElementById("userDownloadUnit").value = download.unit;
       document.getElementById("userTranscode").value = String(!!item.transcode_allowed);
     }
 
     function resetUserForm() {
       editingUserId = "";
       document.getElementById("userTitle").textContent = "新建或编辑用户规则";
-      ["userId", "userName"].forEach((id) => { document.getElementById(id).value = ""; });
+      document.getElementById("userName").value = "";
+      setUserFieldHints(null);
       document.getElementById("userUpload").value = 0;
+      document.getElementById("userUploadUnit").value = "mbps";
       document.getElementById("userDownload").value = 0;
+      document.getElementById("userDownloadUnit").value = "mbps";
       document.getElementById("userTranscode").value = "true";
     }
 
     async function saveUser() {
-      const id = document.getElementById("userId").value.trim();
+      const id = String(selectedUserId || "").trim();
       if (!id) {
-        toast("请输入用户 ID");
+        toast("请输入有效用户名");
         return;
       }
 
@@ -874,8 +1663,8 @@
         method: "PUT",
         body: JSON.stringify({
           name: document.getElementById("userName").value.trim(),
-          upload_limit: Number(document.getElementById("userUpload").value) || 0,
-          download_limit: Number(document.getElementById("userDownload").value) || 0,
+          upload_limit: userSpeedInputToBytes("userUpload", "userUploadUnit"),
+          download_limit: userSpeedInputToBytes("userDownload", "userDownloadUnit"),
           transcode_allowed: document.getElementById("userTranscode").value === "true"
         })
       });
@@ -894,7 +1683,7 @@
     }
 
     async function loadClients() {
-      const clients = await api("/clients");
+      const clients = sortItems(await api("/clients"), "clientsTable");
       rows("clientsTable", clients, (item) =>
         `<tr><td><code>${safe(item.id)}</code></td><td>${safe(item.name || "-")}</td><td><span class="tag">user_agent</span><div class="muted">${safe(item.match_value)}</div></td><td>${formatSpeed(item.upload_limit)}</td><td>${formatSpeed(item.download_limit)}</td><td><div class="actions"><button class="btn" onclick='editClient(${JSON.stringify(JSON.stringify(item))})'>编辑</button><button class="btn danger" onclick='deleteClient(${JSON.stringify(item.id)})'>删除</button></div></td></tr>`,
       6, "暂无客户端规则");
@@ -904,37 +1693,42 @@
       const item = JSON.parse(payload);
       editingClientId = item.id;
       document.getElementById("clientTitle").textContent = `编辑客户端 User-Agent 规则：${item.name || item.id}`;
-      document.getElementById("clientRuleId").value = item.id || "";
       document.getElementById("clientRuleName").value = item.name || "";
       document.getElementById("clientMatchValue").value = item.match_value || "";
-      document.getElementById("clientUpload").value = item.upload_limit || 0;
-      document.getElementById("clientDownload").value = item.download_limit || 0;
+      const upload = bytesToUserSpeedInput(item.upload_limit);
+      const download = bytesToUserSpeedInput(item.download_limit);
+      document.getElementById("clientUpload").value = upload.amount;
+      document.getElementById("clientUploadUnit").value = upload.unit;
+      document.getElementById("clientDownload").value = download.amount;
+      document.getElementById("clientDownloadUnit").value = download.unit;
     }
 
     function resetClientForm() {
       editingClientId = "";
       document.getElementById("clientTitle").textContent = "新建或编辑客户端 User-Agent 规则";
-      ["clientRuleId", "clientRuleName", "clientMatchValue"].forEach((id) => { document.getElementById(id).value = ""; });
+      ["clientRuleName", "clientMatchValue"].forEach((id) => { document.getElementById(id).value = ""; });
       document.getElementById("clientUpload").value = 0;
+      document.getElementById("clientUploadUnit").value = "mbps";
       document.getElementById("clientDownload").value = 0;
+      document.getElementById("clientDownloadUnit").value = "mbps";
     }
 
     async function saveClient() {
-      const id = document.getElementById("clientRuleId").value.trim();
-      if (!id) {
-        toast("请输入规则 ID");
+      const name = document.getElementById("clientRuleName").value.trim();
+      if (!name) {
+        toast("请输入客户端名称");
         return;
       }
 
       await api("/clients", {
         method: "POST",
         body: JSON.stringify({
-          id,
-          name: document.getElementById("clientRuleName").value.trim(),
+          id: editingClientId,
+          name,
           match_type: "user_agent",
           match_value: document.getElementById("clientMatchValue").value.trim(),
-          upload_limit: Number(document.getElementById("clientUpload").value) || 0,
-          download_limit: Number(document.getElementById("clientDownload").value) || 0
+          upload_limit: userSpeedInputToBytes("clientUpload", "clientUploadUnit"),
+          download_limit: userSpeedInputToBytes("clientDownload", "clientDownloadUnit")
         })
       });
 
@@ -952,23 +1746,68 @@
     }
 
     async function loadTraffic() {
+      if (currentTrafficView === "records") {
+        const records = await api(`/traffic/records?since=${currentTrafficRange}&limit=200`);
+        rows("trafficRecords", records, (item) =>
+          `<tr>
+            <td>${safe(formatDateTime(item.timestamp))}</td>
+            <td><div class="record-meta"><div class="record-title">${safe(item.user_name || item.user_id || "未知")}</div><div class="record-subtitle">${safe(item.server_id || "-")}</div></div></td>
+            <td>${safe(trafficKindLabel(item.traffic_kind))}</td>
+            <td>${safe(item.client_name || item.client_id || "-")}</td>
+            <td>${safe(item.device_name || item.device_id || "-")}</td>
+            <td><div class="record-subtitle">${safe(item.request_path || "-")}</div></td>
+            <td>${formatBytes(item.total_bytes_in)}</td>
+            <td>${formatBytes(item.total_bytes_out)}</td>
+            <td><button class="btn danger" onclick="deleteTrafficRecord(${Number(item.id)})">删除</button></td>
+          </tr>`,
+        9, "暂无数据库记录");
+        return;
+      }
+
       const [users, clients] = await Promise.all([
         api(`/traffic/users?since=${currentTrafficRange}`),
         api(`/traffic/clients?since=${currentTrafficRange}`)
       ]);
 
-      rows("trafficUsers", users, (item) =>
+      const sortedTrafficUsers = sortItems(users, "trafficUsers");
+      const sortedTrafficClients = sortItems(clients, "trafficClients");
+
+      rows("trafficUsers", sortedTrafficUsers, (item) =>
         `<tr><td>${safe(item.user_name || item.user_id || "未知")}</td><td>${formatBytes(item.total_bytes_in)}</td><td>${formatBytes(item.total_bytes_out)}</td><td>${item.request_count || 0}</td></tr>`,
       4, "暂无用户统计");
 
-      rows("trafficClients", clients, (item) =>
+      rows("trafficClients", sortedTrafficClients, (item) =>
         `<tr><td>${safe(item.client_name || item.client_id || "未知")}</td><td>${safe(item.device_name || item.device_id || "-")}</td><td>${formatBytes(item.total_bytes_in)}</td><td>${formatBytes(item.total_bytes_out)}</td><td>${item.request_count || 0}</td></tr>`,
       5, "暂无客户端统计");
+
+      renderPieChart("trafficUserChart", sortedTrafficUsers, "user_name");
+      renderPieChart("trafficClientChart", sortedTrafficClients, "client_name");
+    }
+
+    async function refreshTrafficDataViews() {
+      await Promise.all([loadOverview(), loadTraffic()]);
+    }
+
+    async function deleteTrafficRecord(id) {
+      if (!confirm(`确定删除数据库记录 #${id} 吗？`)) return;
+      await api(`/traffic/records/${id}`, { method: "DELETE" });
+      await refreshTrafficDataViews();
+      toast("数据库记录已删除");
+    }
+
+    async function resetTrafficDatabase() {
+      if (!confirm("确定清空整个流量数据库吗？此操作不可恢复。")) return;
+      if (!confirm("请再次确认：要清空所有流量统计记录吗？")) return;
+      await api("/traffic/reset", { method: "DELETE" });
+      await refreshTrafficDataViews();
+      toast("流量数据库已清空");
     }
 
     async function loadSettings() {
       const settings = await api("/rules/defaults");
       document.getElementById("embyUrl").value = settings.emby_url || "";
+      document.getElementById("listenPort").value = settings.listen_port || 8095;
+      document.getElementById("adminPath").value = settings.admin_path || "/admin";
       document.getElementById("embyApiKey").value = "";
       document.getElementById("embyApiKey").placeholder = settings.emby_api_key_configured ? "已配置，留空则保持当前值" : "输入 Emby API Key";
       document.getElementById("defaultUpload").value = settings.default_upload || 0;
@@ -982,6 +1821,8 @@
     async function saveSettings() {
       const payload = {
         emby_url: document.getElementById("embyUrl").value.trim(),
+        listen_port: Number(document.getElementById("listenPort").value) || 8095,
+        admin_path: document.getElementById("adminPath").value.trim(),
         emby_api_key: document.getElementById("embyApiKey").value.trim(),
         default_upload: Number(document.getElementById("defaultUpload").value) || 0,
         default_download: Number(document.getElementById("defaultDownload").value) || 0,
@@ -995,13 +1836,18 @@
         body: JSON.stringify(payload)
       });
 
-      if (payload.admin_username && payload.admin_password) {
-        const authorization = "Basic " + btoa(`${payload.admin_username}:${payload.admin_password}`);
-        persistAuth(authorization, payload.admin_username);
+      if (payload.admin_username) {
+        persistIdentity(payload.admin_username);
       }
 
       document.getElementById("embyApiKey").value = "";
       document.getElementById("adminPassword").value = "";
+      if (result.restart_required) {
+        const nextPort = result.defaults?.listen_port || payload.listen_port;
+        const nextPath = result.defaults?.admin_path || payload.admin_path || "/admin";
+        toast(`设置已保存，重启后使用 http://localhost:${nextPort}${nextPath}/`);
+        return;
+      }
       toast(result.message || "设置已保存");
     }
 
@@ -1009,7 +1855,7 @@
       const days = Number(document.getElementById("cleanDays").value) || 30;
       if (!confirm(`确定删除 ${days} 天前的统计数据吗？`)) return;
       await api(`/traffic/clean?days=${days}`, { method: "DELETE" });
-      await Promise.all([loadTraffic(), loadOverview()]);
+      await refreshTrafficDataViews();
       toast("统计数据已清理");
     }
 
@@ -1041,14 +1887,35 @@
         .replaceAll("'", "&#39;");
     }
 
-    const savedAuth = sessionStorage.getItem("emby_mp_auth");
+    function formatDateTime(value) {
+      return value || "-";
+    }
+
+    function trafficKindLabel(kind) {
+      if (kind === "public") return "公共请求";
+      if (kind === "user") return "用户请求";
+      if (kind === "unknown") return "未知请求";
+      return kind || "-";
+    }
+
     const savedUsername = localStorage.getItem("emby_mp_username") || "";
     document.querySelectorAll("#trafficRangeSegment button").forEach((button) => {
       button.classList.toggle("active", button.dataset.range === currentTrafficRange);
     });
-    if (savedAuth) {
-      bootstrapWithSavedAuth(savedAuth, savedUsername);
-    }
+    document.querySelectorAll("#trafficViewSegment button").forEach((button) => {
+      button.classList.toggle("active", button.dataset.view === currentTrafficView);
+    });
+    updateSortButtons();
+    document.getElementById("trafficSummaryPane").classList.toggle("active", currentTrafficView === "summary");
+    document.getElementById("trafficRecordsPane").classList.toggle("active", currentTrafficView === "records");
+    fetch("/api/auth/status", { credentials: "same-origin" })
+      .then((response) => response.json())
+      .then((status) => {
+        if (status.authenticated) {
+          bootstrapWithSession(status.username || savedUsername);
+        }
+      })
+      .catch(() => null);
 
     ["usernameInput", "passwordInput"].forEach((id) => {
       document.getElementById(id).addEventListener("keydown", (event) => {

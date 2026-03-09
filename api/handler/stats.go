@@ -20,6 +20,7 @@ func NewStatsHandler() *StatsHandler {
 
 // StatsResponse represents traffic statistics response
 type StatsResponse struct {
+	ID            int64  `json:"id,omitempty"`
 	UserID        string `json:"user_id,omitempty"`
 	UserName      string `json:"user_name,omitempty"`
 	ClientID      string `json:"client_id,omitempty"`
@@ -27,6 +28,9 @@ type StatsResponse struct {
 	DeviceID      string `json:"device_id,omitempty"`
 	DeviceName    string `json:"device_name,omitempty"`
 	ServerID      string `json:"server_id,omitempty"`
+	RequestPath   string `json:"request_path,omitempty"`
+	TrafficKind   string `json:"traffic_kind,omitempty"`
+	Timestamp     string `json:"timestamp,omitempty"`
 	TotalBytesIn  int64  `json:"total_bytes_in"`
 	TotalBytesOut int64  `json:"total_bytes_out"`
 	RequestCount  int64  `json:"request_count"`
@@ -174,6 +178,71 @@ func (h *StatsHandler) GetTrafficSummary(c *gin.Context) {
 		TotalBytesOut: summary.TotalBytesOut,
 		RequestCount:  summary.RequestCount,
 	})
+}
+
+func (h *StatsHandler) ListTrafficEntries(c *gin.Context) {
+	since := parseTimeRange(c.Query("since"))
+	limit := 200
+	if raw := c.Query("limit"); raw != "" {
+		parsed, err := strconv.Atoi(raw)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid limit parameter"})
+			return
+		}
+		limit = parsed
+	}
+
+	entries, err := stats.ListTrafficEntries(since, limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	response := make([]StatsResponse, len(entries))
+	for i, entry := range entries {
+		response[i] = StatsResponse{
+			ID:            entry.ID,
+			UserID:        entry.UserID,
+			UserName:      entry.UserName,
+			ClientID:      entry.ClientID,
+			ClientName:    entry.ClientName,
+			DeviceID:      entry.DeviceID,
+			DeviceName:    entry.DeviceName,
+			ServerID:      entry.ServerID,
+			RequestPath:   entry.RequestPath,
+			TrafficKind:   entry.TrafficKind,
+			Timestamp:     entry.Timestamp,
+			TotalBytesIn:  entry.BytesIn,
+			TotalBytesOut: entry.BytesOut,
+			RequestCount:  1,
+		}
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+func (h *StatsHandler) DeleteTrafficEntry(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || id <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid traffic record id"})
+		return
+	}
+
+	if err := stats.DeleteTrafficEntry(id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Traffic record deleted"})
+}
+
+func (h *StatsHandler) ResetTrafficStats(c *gin.Context) {
+	if err := stats.ResetTrafficStats(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Traffic database cleared"})
 }
 
 // CleanStats cleans old statistics

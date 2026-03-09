@@ -1,12 +1,13 @@
 server:
   listen: ":8095"
-  admin_token: "replace-with-secure-admin-token"
+  admin_path: "/admin"
+  admin_token: "replace-with-secure-admin-token" # first save will write admin_token_encrypted instead
   admin_username: "admin"
-  admin_password: "replace-with-secure-admin-password"
+  admin_password: "replace-with-secure-admin-password" # first save will write admin_password_hash instead
 
 emby:
   url: "http://localhost:8096"
-  api_key: "replace-with-emby-api-key"
+  api_key: "replace-with-emby-api-key" # first save will write api_key_encrypted instead
 
 backend:
   type: "direct"

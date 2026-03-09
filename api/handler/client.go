@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"regexp"
 	"strings"
 
 	"emby-media-portal/internal/ratelimit"
@@ -97,6 +98,12 @@ func (h *ClientHandler) SaveClientRule(c *gin.Context) {
 		req.ID = strings.TrimSpace(c.Param("id"))
 	}
 	if req.ID == "" {
+		req.ID = slugifyClientRuleID(req.Name)
+	}
+	if req.ID == "" {
+		req.ID = slugifyClientRuleID(req.MatchValue)
+	}
+	if req.ID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "client rule id required"})
 		return
 	}
@@ -177,4 +184,12 @@ func isValidMatchType(matchType string) bool {
 	default:
 		return false
 	}
+}
+
+var clientRuleSlugPattern = regexp.MustCompile(`[^a-z0-9]+`)
+
+func slugifyClientRuleID(value string) string {
+	value = strings.ToLower(strings.TrimSpace(value))
+	value = clientRuleSlugPattern.ReplaceAllString(value, "-")
+	return strings.Trim(value, "-")
 }

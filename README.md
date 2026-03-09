@@ -53,6 +53,7 @@ cp config.example.yaml config.yaml
 ```yaml
 server:
   listen: ":8095"
+  admin_path: "/admin"
   admin_token: "your-secure-admin-token"
 
 emby:
@@ -81,7 +82,7 @@ database:
 
 ### 4. 访问管理面板
 
-打开浏览器访问 `http://localhost:8095/admin/`，使用配置的 `admin_token` 登录。
+打开浏览器访问 `http://localhost:8095/admin/`，如果你修改了 `server.listen` 或 `server.admin_path`，这里对应替换成新的端口和入口路径。
 
 ## API 文档
 

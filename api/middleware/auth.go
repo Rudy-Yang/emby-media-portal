@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"emby-media-portal/internal/config"
+	"emby-media-portal/internal/session"
 
 	"github.com/gin-gonic/gin"
 )
@@ -20,11 +21,14 @@ func AuthRequired() gin.HandlerFunc {
 			return
 		}
 
-		if !IsAuthorized(c.GetHeader("Authorization"), c.Query("token"), cfg) {
+		username, ok := IsAuthorized(c, cfg)
+		if !ok {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 			c.Abort()
 			return
 		}
+		c.Set("authenticated", true)
+		c.Set("admin_username", username)
 
 		c.Next()
 	}
@@ -39,21 +43,34 @@ func OptionalAuth() gin.HandlerFunc {
 			return
 		}
 
-		if IsAuthorized(c.GetHeader("Authorization"), c.Query("token"), cfg) {
+		if username, ok := IsAuthorized(c, cfg); ok {
 			c.Set("authenticated", true)
+			c.Set("admin_username", username)
 		}
 
 		c.Next()
 	}
 }
 
-func IsAuthorized(authHeader, queryToken string, cfg *config.Config) bool {
+func IsAuthorized(c *gin.Context, cfg *config.Config) (string, bool) {
 	if cfg == nil {
-		return false
+		return "", false
 	}
 
+	authHeader := c.GetHeader("Authorization")
+	queryToken := c.Query("token")
+
 	if username, password, ok := parseBasicAuth(authHeader); ok {
-		return username == cfg.Server.AdminUsername && password == cfg.Server.AdminPassword
+		if username == cfg.Server.AdminUsername && config.VerifyAdminPassword(cfg, password) {
+			return username, true
+		}
+		return "", false
+	}
+
+	if sessionToken, err := c.Cookie(session.CookieName); err == nil {
+		if username, ok := session.DefaultManager.Validate(sessionToken); ok {
+			return username, true
+		}
 	}
 
 	token := strings.TrimSpace(authHeader)
@@ -61,7 +78,10 @@ func IsAuthorized(authHeader, queryToken string, cfg *config.Config) bool {
 		token = strings.TrimSpace(queryToken)
 	}
 	token = strings.TrimPrefix(token, "Bearer ")
-	return token != "" && token == cfg.Server.AdminToken
+	if token != "" && token == cfg.Server.AdminToken {
+		return cfg.Server.AdminUsername, true
+	}
+	return "", false
 }
 
 func parseBasicAuth(header string) (string, string, bool) {

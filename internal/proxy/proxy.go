@@ -1,12 +1,16 @@
 package proxy
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net"
 	"net/http"
 	"net/url"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -77,6 +81,24 @@ func (p *Proxy) getBackendServerID(targetURL *url.URL) string {
 // ServeHTTP handles incoming requests
 func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	startTime := time.Now()
+	var (
+		userID       string
+		client       *auth.ClientInfo
+		serverID     string
+		trafficKind  string
+		transferID   string
+		bytesWritten int
+		bytesRead    int
+		shouldRecord bool
+	)
+
+	defer func() {
+		if !shouldRecord {
+			return
+		}
+		p.recordStats(r, userID, client, serverID, trafficKind, bytesRead, bytesWritten)
+		p.statsTracker.FinishTransfer(transferID)
+	}()
 
 	// Identify user
 	user, err := p.identifier.IdentifyUser(r)
@@ -84,10 +106,10 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Error identifying user: %v", err)
 	}
 
-	var userID string
 	if user != nil {
 		userID = user.ID
 	}
+	trafficKind = classifyTraffic(r, userID)
 
 	// Check transcode permission
 	if userID != "" && p.transcodeCtrl.IsTranscodeRequest(r) {
@@ -111,7 +133,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	client := p.identifier.IdentifyClient(r)
+	client = p.identifier.IdentifyClient(r)
 	var clientLimiter *ratelimit.Limiter
 	if client != nil {
 		clientRule, ruleErr := p.rulesManager.MatchClientRule(client.ClientName, client.DeviceID, client.UserAgent)
@@ -136,7 +158,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	targetURL.Path = r.URL.Path
 	targetURL.RawQuery = r.URL.RawQuery
 
-	serverID := p.getBackendServerID(targetURL)
+	serverID = p.getBackendServerID(targetURL)
 	var serverLimiter *ratelimit.Limiter
 	if serverID != "" {
 		if rule, ruleErr := p.rulesManager.GetServerRule(serverID); ruleErr != nil {
@@ -152,6 +174,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		bodyBytes, _ = io.ReadAll(r.Body)
 		r.Body = io.NopCloser(strings.NewReader(string(bodyBytes)))
 	}
+	bytesRead = len(bodyBytes)
 
 	// Create proxy request
 	proxyReq, err := http.NewRequestWithContext(
@@ -215,6 +238,8 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer resp.Body.Close()
+	shouldRecord = true
+	transferID = p.startTransfer(userID, client, serverID, r.URL.Path, trafficKind, int64(bytesRead))
 
 	// Copy response headers
 	for key, values := range resp.Header {
@@ -223,10 +248,22 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	rewriteLocationHeader(w.Header(), p.getBackendURL(), proxyBaseURL(r))
+	if rewrittenBody, rewrittenContentLength, rewritten := rewriteDiscoveryResponse(r, resp, p.getBackendURL()); rewritten {
+		w.Header().Set("Content-Length", fmt.Sprintf("%d", rewrittenContentLength))
+		w.WriteHeader(resp.StatusCode)
+		if _, writeErr := w.Write(rewrittenBody); writeErr != nil {
+			log.Printf("Write error: %v", writeErr)
+			return
+		}
+		bytesWritten = len(rewrittenBody)
+		p.statsTracker.AddTransferProgress(transferID, 0, int64(bytesWritten))
+		return
+	}
+
 	w.WriteHeader(resp.StatusCode)
 
 	// Stream response body with rate limiting
-	var bytesWritten int
 	buf := make([]byte, 32*1024) // 32KB buffer
 
 	for {
@@ -267,6 +304,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			bytesWritten += written
+			p.statsTracker.AddTransferProgress(transferID, 0, int64(written))
 
 			// Flush if possible
 			if flusher, ok := w.(http.Flusher); ok {
@@ -283,8 +321,11 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Record stats
-	bytesRead := len(bodyBytes)
+	log.Printf("Request: %s %s - User: %s - Status: %d - Bytes: in=%d out=%d - Duration: %v",
+		r.Method, r.URL.Path, userID, resp.StatusCode, bytesRead, bytesWritten, time.Since(startTime))
+}
+
+func (p *Proxy) recordStats(r *http.Request, userID string, client *auth.ClientInfo, serverID, trafficKind string, bytesRead, bytesWritten int) {
 	clientID, clientName, deviceID, deviceName := "", "", "", ""
 	if client != nil {
 		clientID = client.ID
@@ -292,10 +333,257 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		deviceID = client.DeviceID
 		deviceName = client.DeviceName
 	}
-	p.statsTracker.Record(userID, clientID, clientName, deviceID, deviceName, serverID, int64(bytesRead), int64(bytesWritten))
+	p.statsTracker.Record(userID, clientID, clientName, deviceID, deviceName, serverID, r.URL.Path, trafficKind, int64(bytesRead), int64(bytesWritten))
+}
 
-	log.Printf("Request: %s %s - User: %s - Status: %d - Bytes: in=%d out=%d - Duration: %v",
-		r.Method, r.URL.Path, userID, resp.StatusCode, bytesRead, bytesWritten, time.Since(startTime))
+func (p *Proxy) startTransfer(userID string, client *auth.ClientInfo, serverID, requestPath, trafficKind string, bytesIn int64) string {
+	clientID, clientName, deviceID, deviceName := "", "", "", ""
+	if client != nil {
+		clientID = client.ID
+		clientName = client.Name
+		deviceID = client.DeviceID
+		deviceName = client.DeviceName
+	}
+	return p.statsTracker.StartTransfer(userID, clientID, clientName, deviceID, deviceName, serverID, requestPath, trafficKind, bytesIn)
+}
+
+func rewriteDiscoveryResponse(r *http.Request, resp *http.Response, backendBaseURL string) ([]byte, int, bool) {
+	if r == nil || resp == nil || resp.Body == nil {
+		return nil, 0, false
+	}
+	if !shouldRewriteJSONPath(r.URL.Path) {
+		return nil, 0, false
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, 0, false
+	}
+
+	contentType := strings.ToLower(strings.TrimSpace(resp.Header.Get("Content-Type")))
+	if !strings.Contains(contentType, "application/json") {
+		resp.Body = io.NopCloser(bytes.NewReader(body))
+		return nil, 0, false
+	}
+
+	rewritten, changed := rewriteDiscoveryJSON(r.URL.Path, body, backendBaseURL, proxyBaseURL(r))
+	if !changed {
+		resp.Body = io.NopCloser(bytes.NewReader(body))
+		return nil, 0, false
+	}
+
+	return rewritten, len(rewritten), true
+}
+
+var singleItemPathPattern = regexp.MustCompile(`^/(Users/[^/]+/)?Items/[^/]+$`)
+
+func shouldRewriteJSONPath(path string) bool {
+	switch {
+	case strings.HasSuffix(path, "/System/Info"):
+		return true
+	case strings.HasSuffix(path, "/System/Info/Public"):
+		return true
+	case strings.HasSuffix(path, "/PlaybackInfo"):
+		return true
+	case singleItemPathPattern.MatchString(path):
+		return true
+	default:
+		return false
+	}
+}
+
+func rewriteDiscoveryJSON(path string, body []byte, backendBaseURL, proxyBase string) ([]byte, bool) {
+	var payload map[string]any
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return nil, false
+	}
+
+	changed := false
+	if shouldRewriteServerDiscovery(path) {
+		for _, key := range []string{"LocalAddress", "WanAddress"} {
+			if current, ok := payload[key].(string); ok && current != "" {
+				payload[key] = proxyBase
+				changed = true
+			}
+		}
+		for _, key := range []string{"LocalAddresses", "RemoteAddresses"} {
+			if values, ok := payload[key].([]any); ok {
+				next := make([]any, 0, len(values))
+				for _, value := range values {
+					if _, ok := value.(string); ok {
+						next = append(next, proxyBase)
+						changed = true
+					}
+				}
+				payload[key] = dedupeAnyStrings(next)
+			}
+		}
+		if _, ok := payload["WebSocketPortNumber"]; ok {
+			payload["WebSocketPortNumber"] = proxyPort(proxyBase)
+			changed = true
+		}
+		if _, ok := payload["HttpServerPortNumber"]; ok {
+			payload["HttpServerPortNumber"] = proxyPort(proxyBase)
+			changed = true
+		}
+	}
+
+	if shouldSanitizeMediaPaths(path) && sanitizeMediaPaths(payload) {
+		changed = true
+	}
+
+	serialized, err := json.Marshal(payload)
+	if err != nil {
+		return nil, false
+	}
+
+	serialized = bytes.ReplaceAll(serialized, []byte(backendBaseURL), []byte(proxyBase))
+	return serialized, changed
+}
+
+func shouldRewriteServerDiscovery(path string) bool {
+	switch {
+	case strings.HasSuffix(path, "/System/Info"):
+		return true
+	case strings.HasSuffix(path, "/System/Info/Public"):
+		return true
+	default:
+		return false
+	}
+}
+
+func shouldSanitizeMediaPaths(path string) bool {
+	if strings.HasSuffix(path, "/PlaybackInfo") {
+		return true
+	}
+	return singleItemPathPattern.MatchString(path)
+}
+
+func sanitizeMediaPaths(value any) bool {
+	changed := false
+	switch v := value.(type) {
+	case map[string]any:
+		for key, nested := range v {
+			if key == "Path" {
+				if pathValue, ok := nested.(string); ok && looksLikeLocalMediaPath(pathValue) {
+					v[key] = ""
+					changed = true
+					continue
+				}
+			}
+			if sanitizeMediaPaths(nested) {
+				changed = true
+			}
+		}
+	case []any:
+		for _, item := range v {
+			if sanitizeMediaPaths(item) {
+				changed = true
+			}
+		}
+	}
+	return changed
+}
+
+func looksLikeLocalMediaPath(value string) bool {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return false
+	}
+	switch {
+	case strings.HasPrefix(value, "/mnt/"):
+		return true
+	case strings.HasPrefix(value, "/media/"):
+		return true
+	case strings.HasPrefix(value, "/Volumes/"):
+		return true
+	case strings.HasPrefix(value, "\\\\"):
+		return true
+	default:
+		return len(value) > 2 && value[1] == ':' && (value[2] == '\\' || value[2] == '/')
+	}
+}
+
+func rewriteLocationHeader(header http.Header, backendBaseURL, proxyBase string) {
+	if header == nil {
+		return
+	}
+	location := header.Get("Location")
+	if location == "" {
+		return
+	}
+	if strings.HasPrefix(location, backendBaseURL) {
+		header.Set("Location", strings.Replace(location, backendBaseURL, proxyBase, 1))
+	}
+}
+
+func proxyBaseURL(r *http.Request) string {
+	if r == nil {
+		return ""
+	}
+	scheme := "http"
+	if forwardedProto := strings.TrimSpace(r.Header.Get("X-Forwarded-Proto")); forwardedProto != "" {
+		scheme = forwardedProto
+	} else if r.TLS != nil {
+		scheme = "https"
+	}
+	return scheme + "://" + r.Host
+}
+
+func proxyPort(base string) int {
+	if parsed, err := url.Parse(base); err == nil {
+		if port := parsed.Port(); port != "" {
+			if value, convErr := strconv.Atoi(port); convErr == nil {
+				return value
+			}
+		}
+		if parsed.Scheme == "https" {
+			return 443
+		}
+	}
+	return 80
+}
+
+func dedupeAnyStrings(values []any) []any {
+	seen := map[string]struct{}{}
+	out := make([]any, 0, len(values))
+	for _, value := range values {
+		s, ok := value.(string)
+		if !ok {
+			continue
+		}
+		if _, exists := seen[s]; exists {
+			continue
+		}
+		seen[s] = struct{}{}
+		out = append(out, s)
+	}
+	return out
+}
+
+func classifyTraffic(r *http.Request, userID string) string {
+	if r == nil {
+		return ""
+	}
+	if strings.TrimSpace(userID) != "" {
+		return "user"
+	}
+
+	path := r.URL.Path
+	switch {
+	case strings.HasSuffix(path, "/System/Info/Public"):
+		return "public"
+	case strings.HasSuffix(path, "/Users/AuthenticateByName"):
+		return "public"
+	case strings.HasPrefix(path, "/Sessions"), strings.Contains(path, "/Sessions/"):
+		return "public"
+	case strings.Contains(path, "/Images/"):
+		return "public"
+	case strings.HasPrefix(path, "/web/"), strings.Contains(path, "/web/"):
+		return "public"
+	default:
+		return "unknown"
+	}
 }
 
 func clientIPFromRequest(r *http.Request) string {

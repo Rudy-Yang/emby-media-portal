@@ -33,6 +33,14 @@ type CachedUser struct {
 	ExpiresAt time.Time
 }
 
+type sessionInfo struct {
+	UserID     string `json:"UserId"`
+	UserName   string `json:"UserName"`
+	Client     string `json:"Client"`
+	DeviceID   string `json:"DeviceId"`
+	DeviceName string `json:"DeviceName"`
+}
+
 type Identifier struct {
 	client *http.Client
 	cache  map[string]*CachedUser
@@ -63,8 +71,10 @@ func (i *Identifier) IdentifyUser(r *http.Request) (*UserInfo, error) {
 		return user, nil
 	}
 
+	client := i.IdentifyClient(r)
+
 	// Query Emby API
-	user, err := i.queryEmbyAPI(token)
+	user, err := i.queryEmbyAPI(token, client)
 	if err != nil {
 		return nil, err
 	}
@@ -83,8 +93,7 @@ func (i *Identifier) IdentifyClient(r *http.Request) *ClientInfo {
 		return nil
 	}
 
-	authHeader := r.Header.Get("X-Emby-Authorization")
-	authValues := parseEmbyAuthorization(authHeader)
+	authValues := embyAuthorizationValues(r)
 
 	clientName := firstNonEmpty(
 		authValues["Client"],
@@ -154,7 +163,7 @@ func (i *Identifier) extractToken(r *http.Request) string {
 		return token
 	}
 
-	authValues := parseEmbyAuthorization(r.Header.Get("X-Emby-Authorization"))
+	authValues := embyAuthorizationValues(r)
 	if token := authValues["Token"]; token != "" {
 		return token
 	}
@@ -184,7 +193,7 @@ func (i *Identifier) extractUserID(r *http.Request) string {
 		return userID
 	}
 
-	authValues := parseEmbyAuthorization(r.Header.Get("X-Emby-Authorization"))
+	authValues := embyAuthorizationValues(r)
 	if userID := strings.TrimSpace(authValues["UserId"]); userID != "" {
 		return userID
 	}
@@ -218,14 +227,18 @@ func (i *Identifier) addToCache(token string, user *UserInfo) {
 	}
 }
 
-func (i *Identifier) queryEmbyAPI(token string) (*UserInfo, error) {
+func (i *Identifier) queryEmbyAPI(token string, client *ClientInfo) (*UserInfo, error) {
 	cfg := config.Get()
 	if cfg == nil {
 		return nil, fmt.Errorf("config not loaded")
 	}
 
-	url := fmt.Sprintf("%s/Users/Me?api_key=%s", cfg.Emby.URL, token)
-	req, err := http.NewRequest("GET", url, nil)
+	sessionUser, sessionErr := i.querySessionUser(cfg.Emby.URL, token, client)
+	if sessionErr == nil && sessionUser != nil {
+		return sessionUser, nil
+	}
+
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/Users/Me", cfg.Emby.URL), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -248,6 +261,93 @@ func (i *Identifier) queryEmbyAPI(token string) (*UserInfo, error) {
 	}
 
 	return &user, nil
+}
+
+func (i *Identifier) querySessionUser(baseURL, token string, client *ClientInfo) (*UserInfo, error) {
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/Sessions", baseURL), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("X-Emby-Token", token)
+
+	query := req.URL.Query()
+	if client != nil {
+		if client.DeviceID != "" {
+			query.Set("deviceId", client.DeviceID)
+			query.Set("X-Emby-Device-Id", client.DeviceID)
+		}
+		if client.ClientName != "" {
+			query.Set("X-Emby-Client", client.ClientName)
+		}
+		if client.DeviceName != "" {
+			query.Set("X-Emby-Device-Name", client.DeviceName)
+		}
+	}
+	query.Set("X-Emby-Token", token)
+	req.URL.RawQuery = query.Encode()
+
+	resp, err := i.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("emby sessions api returned status %d", resp.StatusCode)
+	}
+
+	var sessions []sessionInfo
+	if err := json.NewDecoder(resp.Body).Decode(&sessions); err != nil {
+		return nil, err
+	}
+
+	if len(sessions) == 0 {
+		return nil, nil
+	}
+
+	if client != nil {
+		for _, session := range sessions {
+			if sameSession(session, client) && session.UserID != "" {
+				return &UserInfo{ID: session.UserID, Name: session.UserName}, nil
+			}
+		}
+	}
+
+	userByID := map[string]string{}
+	for _, session := range sessions {
+		if session.UserID == "" {
+			continue
+		}
+		userByID[session.UserID] = session.UserName
+	}
+	if len(userByID) == 1 {
+		for id, name := range userByID {
+			return &UserInfo{ID: id, Name: name}, nil
+		}
+	}
+
+	return nil, nil
+}
+
+func sameSession(session sessionInfo, client *ClientInfo) bool {
+	if client == nil {
+		return false
+	}
+
+	if client.DeviceID != "" && strings.EqualFold(session.DeviceID, client.DeviceID) {
+		return true
+	}
+
+	if client.DeviceName != "" && strings.EqualFold(session.DeviceName, client.DeviceName) {
+		return true
+	}
+
+	if client.ClientName != "" && strings.EqualFold(session.Client, client.ClientName) {
+		return true
+	}
+
+	return false
 }
 
 // GetAllUsers fetches all users from Emby
@@ -313,6 +413,21 @@ func parseEmbyAuthorization(header string) map[string]string {
 	}
 
 	return values
+}
+
+func embyAuthorizationValues(r *http.Request) map[string]string {
+	if r == nil {
+		return map[string]string{}
+	}
+
+	for _, header := range []string{"X-Emby-Authorization", "Authorization"} {
+		values := parseEmbyAuthorization(r.Header.Get(header))
+		if len(values) > 0 {
+			return values
+		}
+	}
+
+	return map[string]string{}
 }
 
 func firstNonEmpty(values ...string) string {
