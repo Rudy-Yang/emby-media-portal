@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   emby-media-portal:
-    build: .
+    image: ghcr.io/rudy-yang/emby-media-portal:latest
     container_name: emby-media-portal
     restart: unless-stopped
     ports:
