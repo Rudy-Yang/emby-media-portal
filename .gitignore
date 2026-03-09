@@ -4,4 +4,6 @@ data/
 debug-server.log
 debug-server.err.log
 emby-media-portal
+*.exe
+*.exe~
 .DS_Store
