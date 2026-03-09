@@ -30,8 +30,8 @@ RUN apk add --no-cache ca-certificates sqlite
 # Copy binary
 COPY --from=builder /app/emby-media-portal .
 
-# Copy default config
-COPY config.yaml .
+# Copy example config as the container default
+COPY config.example.yaml ./config.yaml
 
 # Create data directory
 RUN mkdir -p /app/data

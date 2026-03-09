@@ -42,7 +42,13 @@ go build -o emby-media-portal ./cmd/server
 
 ### 2. 配置
 
-编辑 `config.yaml` 文件：
+复制示例配置并编辑本地 `config.yaml`：
+
+```bash
+cp config.example.yaml config.yaml
+```
+
+然后修改 `config.yaml`：
 
 ```yaml
 server:
@@ -155,7 +161,7 @@ RUN go build -o emby-media-portal ./cmd/server
 FROM alpine:latest
 WORKDIR /app
 COPY --from=builder /app/emby-media-portal .
-COPY config.yaml .
+COPY config.example.yaml ./config.yaml
 EXPOSE 8095
 CMD ["./emby-media-portal"]
 ```

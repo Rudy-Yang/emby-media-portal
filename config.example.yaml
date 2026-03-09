@@ -1,0 +1,22 @@
+server:
+  listen: ":8095"
+  admin_token: "replace-with-secure-admin-token"
+  admin_username: "admin"
+  admin_password: "replace-with-secure-admin-password"
+
+emby:
+  url: "http://localhost:8096"
+  api_key: "replace-with-emby-api-key"
+
+backend:
+  type: "direct"
+  lucky_url: ""
+  server_id: "emby-main"
+
+rate_limits:
+  default_upload: 0
+  default_download: 0
+  global_limit: 0
+
+database:
+  path: "./data/config.db"
