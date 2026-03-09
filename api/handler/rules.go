@@ -141,13 +141,13 @@ func (h *RulesHandler) DeleteServer(c *gin.Context) {
 
 // DefaultLimitsResponse represents default limits
 type DefaultLimitsResponse struct {
-	DefaultUpload   int64  `json:"default_upload"`
-	DefaultDownload int64  `json:"default_download"`
-	GlobalLimit     int64  `json:"global_limit"`
-	EmbyURL         string `json:"emby_url"`
-	EmbyAPIKey      string `json:"emby_api_key"`
-	AdminUsername   string `json:"admin_username"`
-	AdminPassword   string `json:"admin_password"`
+	DefaultUpload        int64  `json:"default_upload"`
+	DefaultDownload      int64  `json:"default_download"`
+	GlobalLimit          int64  `json:"global_limit"`
+	EmbyURL              string `json:"emby_url"`
+	AdminUsername        string `json:"admin_username"`
+	EmbyAPIKeyConfigured bool   `json:"emby_api_key_configured"`
+	AdminPasswordSet     bool   `json:"admin_password_set"`
 }
 
 // GetDefaultLimits returns default rate limits
@@ -161,13 +161,13 @@ func (h *RulesHandler) GetDefaultLimits(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, DefaultLimitsResponse{
-		DefaultUpload:   upload,
-		DefaultDownload: download,
-		GlobalLimit:     globalLimit,
-		EmbyURL:         currentConfigValue(func(cfg *config.Config) string { return cfg.Emby.URL }),
-		EmbyAPIKey:      currentConfigValue(func(cfg *config.Config) string { return cfg.Emby.APIKey }),
-		AdminUsername:   currentConfigValue(func(cfg *config.Config) string { return cfg.Server.AdminUsername }),
-		AdminPassword:   currentConfigValue(func(cfg *config.Config) string { return cfg.Server.AdminPassword }),
+		DefaultUpload:        upload,
+		DefaultDownload:      download,
+		GlobalLimit:          globalLimit,
+		EmbyURL:              currentConfigValue(func(cfg *config.Config) string { return cfg.Emby.URL }),
+		AdminUsername:        currentConfigValue(func(cfg *config.Config) string { return cfg.Server.AdminUsername }),
+		EmbyAPIKeyConfigured: currentConfigValue(func(cfg *config.Config) string { return cfg.Emby.APIKey }) != "",
+		AdminPasswordSet:     currentConfigValue(func(cfg *config.Config) string { return cfg.Server.AdminPassword }) != "",
 	})
 }
 
@@ -208,8 +208,12 @@ func (h *RulesHandler) UpdateDefaultLimits(c *gin.Context) {
 	updated.RateLimits.DefaultUpload = req.DefaultUpload
 	updated.RateLimits.DefaultDownload = req.DefaultDownload
 	updated.RateLimits.GlobalLimit = req.GlobalLimit
-	updated.Emby.URL = req.EmbyURL
-	updated.Emby.APIKey = req.EmbyAPIKey
+	if req.EmbyURL != "" {
+		updated.Emby.URL = req.EmbyURL
+	}
+	if req.EmbyAPIKey != "" {
+		updated.Emby.APIKey = req.EmbyAPIKey
+	}
 	if req.AdminUsername != "" {
 		updated.Server.AdminUsername = req.AdminUsername
 	}
@@ -226,13 +230,13 @@ func (h *RulesHandler) UpdateDefaultLimits(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Settings updated successfully",
 		"defaults": DefaultLimitsResponse{
-			DefaultUpload:   req.DefaultUpload,
-			DefaultDownload: req.DefaultDownload,
-			GlobalLimit:     req.GlobalLimit,
-			EmbyURL:         updated.Emby.URL,
-			EmbyAPIKey:      updated.Emby.APIKey,
-			AdminUsername:   updated.Server.AdminUsername,
-			AdminPassword:   updated.Server.AdminPassword,
+			DefaultUpload:        req.DefaultUpload,
+			DefaultDownload:      req.DefaultDownload,
+			GlobalLimit:          req.GlobalLimit,
+			EmbyURL:              updated.Emby.URL,
+			AdminUsername:        updated.Server.AdminUsername,
+			EmbyAPIKeyConfigured: updated.Emby.APIKey != "",
+			AdminPasswordSet:     updated.Server.AdminPassword != "",
 		},
 	})
 }

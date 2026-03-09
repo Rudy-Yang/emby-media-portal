@@ -580,7 +580,7 @@
         <div class="card">
           <h2>系统设置</h2>
           <div class="field"><label for="embyUrl">Emby 地址</label><input id="embyUrl" placeholder="https://emby.example.com"></div>
-          <div class="field"><label for="embyApiKey">Emby API Key</label><input id="embyApiKey" placeholder="输入 Emby API Key"></div>
+          <div class="field"><label for="embyApiKey">Emby API Key</label><input id="embyApiKey" type="password" placeholder="留空则保持当前值"></div>
           <div class="field"><label for="defaultUpload">默认上传限速</label><input id="defaultUpload" type="number" value="0"></div>
           <div class="field"><label for="defaultDownload">默认下载限速</label><input id="defaultDownload" type="number" value="0"></div>
           <div class="field"><label for="globalLimit">全局限速</label><input id="globalLimit" type="number" value="0"></div>
@@ -589,7 +589,7 @@
         <div class="card">
           <h2>管理员登录</h2>
           <div class="field"><label for="adminUsername">管理员用户名</label><input id="adminUsername" placeholder="输入管理员用户名"></div>
-          <div class="field"><label for="adminPassword">管理员密码</label><input id="adminPassword" type="password" placeholder="输入管理员密码"></div>
+          <div class="field"><label for="adminPassword">管理员密码</label><input id="adminPassword" type="password" placeholder="留空则保持当前值"></div>
           <div class="field"><label for="cleanDays">删除多少天前的统计数据</label><input id="cleanDays" type="number" value="30"></div>
           <div class="actions">
             <button class="btn primary" onclick="saveSettings()">保存登录配置</button>
@@ -658,17 +658,15 @@
       document.getElementById("appView").classList.toggle("hidden", !authenticated);
     }
 
-    function persistAuth(authorization, username, password) {
+    function persistAuth(authorization, username) {
       authHeader = authorization;
-      localStorage.setItem("emby_mp_auth", authorization);
+      sessionStorage.setItem("emby_mp_auth", authorization);
       localStorage.setItem("emby_mp_username", username);
-      localStorage.setItem("emby_mp_password", password);
     }
 
-    async function bootstrapWithSavedAuth(savedAuth, username, password) {
+    async function bootstrapWithSavedAuth(savedAuth, username) {
       authHeader = savedAuth;
       document.getElementById("usernameInput").value = username || "";
-      document.getElementById("passwordInput").value = password || "";
       setAuthenticatedState(true);
       try {
         await showSection(localStorage.getItem("emby_mp_section") || "overview");
@@ -703,7 +701,7 @@
           return payload;
         });
 
-        persistAuth(result.authorization, username, password);
+        persistAuth(result.authorization, username);
         setAuthenticatedState(true);
         await showSection(localStorage.getItem("emby_mp_section") || "overview");
       } catch (error) {
@@ -717,9 +715,9 @@
 
     function logout(showToast = false) {
       authHeader = "";
-      localStorage.removeItem("emby_mp_auth");
+      sessionStorage.removeItem("emby_mp_auth");
       localStorage.removeItem("emby_mp_username");
-      localStorage.removeItem("emby_mp_password");
+      document.getElementById("passwordInput").value = "";
       setAuthenticatedState(false);
       if (showToast) {
         toast("已退出登录");
@@ -971,12 +969,14 @@
     async function loadSettings() {
       const settings = await api("/rules/defaults");
       document.getElementById("embyUrl").value = settings.emby_url || "";
-      document.getElementById("embyApiKey").value = settings.emby_api_key || "";
+      document.getElementById("embyApiKey").value = "";
+      document.getElementById("embyApiKey").placeholder = settings.emby_api_key_configured ? "已配置，留空则保持当前值" : "输入 Emby API Key";
       document.getElementById("defaultUpload").value = settings.default_upload || 0;
       document.getElementById("defaultDownload").value = settings.default_download || 0;
       document.getElementById("globalLimit").value = settings.global_limit || 0;
       document.getElementById("adminUsername").value = settings.admin_username || "";
-      document.getElementById("adminPassword").value = settings.admin_password || "";
+      document.getElementById("adminPassword").value = "";
+      document.getElementById("adminPassword").placeholder = settings.admin_password_set ? "已配置，留空则保持当前值" : "输入管理员密码";
     }
 
     async function saveSettings() {
@@ -997,9 +997,11 @@
 
       if (payload.admin_username && payload.admin_password) {
         const authorization = "Basic " + btoa(`${payload.admin_username}:${payload.admin_password}`);
-        persistAuth(authorization, payload.admin_username, payload.admin_password);
+        persistAuth(authorization, payload.admin_username);
       }
 
+      document.getElementById("embyApiKey").value = "";
+      document.getElementById("adminPassword").value = "";
       toast(result.message || "设置已保存");
     }
 
@@ -1039,14 +1041,13 @@
         .replaceAll("'", "&#39;");
     }
 
-    const savedAuth = localStorage.getItem("emby_mp_auth");
+    const savedAuth = sessionStorage.getItem("emby_mp_auth");
     const savedUsername = localStorage.getItem("emby_mp_username") || "";
-    const savedPassword = localStorage.getItem("emby_mp_password") || "";
     document.querySelectorAll("#trafficRangeSegment button").forEach((button) => {
       button.classList.toggle("active", button.dataset.range === currentTrafficRange);
     });
     if (savedAuth) {
-      bootstrapWithSavedAuth(savedAuth, savedUsername, savedPassword);
+      bootstrapWithSavedAuth(savedAuth, savedUsername);
     }
 
     ["usernameInput", "passwordInput"].forEach((id) => {
