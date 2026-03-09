@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 
+	"emby-media-portal/internal/config"
 	"emby-media-portal/internal/ratelimit"
 
 	"github.com/gin-gonic/gin"
@@ -140,9 +141,13 @@ func (h *RulesHandler) DeleteServer(c *gin.Context) {
 
 // DefaultLimitsResponse represents default limits
 type DefaultLimitsResponse struct {
-	DefaultUpload   int64 `json:"default_upload"`
-	DefaultDownload int64 `json:"default_download"`
-	GlobalLimit     int64 `json:"global_limit"`
+	DefaultUpload   int64  `json:"default_upload"`
+	DefaultDownload int64  `json:"default_download"`
+	GlobalLimit     int64  `json:"global_limit"`
+	EmbyURL         string `json:"emby_url"`
+	EmbyAPIKey      string `json:"emby_api_key"`
+	AdminUsername   string `json:"admin_username"`
+	AdminPassword   string `json:"admin_password"`
 }
 
 // GetDefaultLimits returns default rate limits
@@ -159,14 +164,22 @@ func (h *RulesHandler) GetDefaultLimits(c *gin.Context) {
 		DefaultUpload:   upload,
 		DefaultDownload: download,
 		GlobalLimit:     globalLimit,
+		EmbyURL:         currentConfigValue(func(cfg *config.Config) string { return cfg.Emby.URL }),
+		EmbyAPIKey:      currentConfigValue(func(cfg *config.Config) string { return cfg.Emby.APIKey }),
+		AdminUsername:   currentConfigValue(func(cfg *config.Config) string { return cfg.Server.AdminUsername }),
+		AdminPassword:   currentConfigValue(func(cfg *config.Config) string { return cfg.Server.AdminPassword }),
 	})
 }
 
 // UpdateDefaultLimitsRequest represents request for updating defaults
 type UpdateDefaultLimitsRequest struct {
-	DefaultUpload   int64 `json:"default_upload"`
-	DefaultDownload int64 `json:"default_download"`
-	GlobalLimit     int64 `json:"global_limit"`
+	DefaultUpload   int64  `json:"default_upload"`
+	DefaultDownload int64  `json:"default_download"`
+	GlobalLimit     int64  `json:"global_limit"`
+	EmbyURL         string `json:"emby_url"`
+	EmbyAPIKey      string `json:"emby_api_key"`
+	AdminUsername   string `json:"admin_username"`
+	AdminPassword   string `json:"admin_password"`
 }
 
 // UpdateDefaultLimits updates default rate limits
@@ -180,12 +193,54 @@ func (h *RulesHandler) UpdateDefaultLimits(c *gin.Context) {
 	h.limiterManager.UpdateDefaults(req.DefaultUpload, req.DefaultDownload)
 	h.limiterManager.UpdateGlobalLimit(req.GlobalLimit)
 
+	cfg := config.Get()
+	if cfg == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "config not loaded"})
+		return
+	}
+
+	updated := *cfg
+	updated.Emby = cfg.Emby
+	updated.Server = cfg.Server
+	updated.Backend = cfg.Backend
+	updated.RateLimits = cfg.RateLimits
+	updated.Database = cfg.Database
+	updated.RateLimits.DefaultUpload = req.DefaultUpload
+	updated.RateLimits.DefaultDownload = req.DefaultDownload
+	updated.RateLimits.GlobalLimit = req.GlobalLimit
+	updated.Emby.URL = req.EmbyURL
+	updated.Emby.APIKey = req.EmbyAPIKey
+	if req.AdminUsername != "" {
+		updated.Server.AdminUsername = req.AdminUsername
+	}
+	if req.AdminPassword != "" {
+		updated.Server.AdminPassword = req.AdminPassword
+	}
+
+	config.Update(&updated)
+	if err := config.Save(&updated); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Default limits updated successfully",
+		"message": "Settings updated successfully",
 		"defaults": DefaultLimitsResponse{
 			DefaultUpload:   req.DefaultUpload,
 			DefaultDownload: req.DefaultDownload,
 			GlobalLimit:     req.GlobalLimit,
+			EmbyURL:         updated.Emby.URL,
+			EmbyAPIKey:      updated.Emby.APIKey,
+			AdminUsername:   updated.Server.AdminUsername,
+			AdminPassword:   updated.Server.AdminPassword,
 		},
 	})
+}
+
+func currentConfigValue(selector func(*config.Config) string) string {
+	cfg := config.Get()
+	if cfg == nil {
+		return ""
+	}
+	return selector(cfg)
 }

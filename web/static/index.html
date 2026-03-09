@@ -7,7 +7,6 @@
   <style>
     :root {
       --bg-base: #060c18;
-      --bg-glow: rgba(29, 121, 255, 0.18);
       --card: rgba(16, 28, 49, 0.82);
       --card-border: rgba(163, 189, 255, 0.14);
       --line: #2a3550;
@@ -19,9 +18,7 @@
       --shadow: 0 22px 60px rgba(0, 0, 0, 0.28);
     }
 
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     html {
       min-height: 100%;
@@ -40,8 +37,8 @@
       font-family: "Segoe UI", sans-serif;
       color: var(--text);
       background:
-        radial-gradient(circle at 14% 12%, rgba(56, 148, 255, 0.12), transparent 0, transparent 24%),
-        radial-gradient(circle at 86% 10%, rgba(26, 82, 185, 0.16), transparent 0, transparent 22%),
+        radial-gradient(circle at 14% 12%, rgba(56, 148, 255, 0.12), transparent 24%),
+        radial-gradient(circle at 86% 10%, rgba(26, 82, 185, 0.16), transparent 22%),
         linear-gradient(180deg, rgba(11, 20, 39, 0.12), rgba(5, 11, 21, 0.38));
       background-repeat: no-repeat;
       background-size: cover;
@@ -61,14 +58,8 @@
       opacity: 0.6;
     }
 
-    .wrap {
-      width: min(1180px, calc(100% - 24px));
-      margin: 0 auto;
-    }
-
-    .hidden {
-      display: none !important;
-    }
+    .wrap { width: min(1180px, calc(100% - 24px)); margin: 0 auto; }
+    .hidden { display: none !important; }
 
     .card {
       background: var(--card);
@@ -85,26 +76,13 @@
       place-items: center;
     }
 
-    .login .card {
-      width: min(420px, 100%);
-    }
+    .login .card { width: min(420px, 100%); }
+    .app { padding: 24px 0 40px; }
 
-    .app {
-      padding: 24px 0 40px;
-    }
+    h1, h2, h3, p { margin: 0; }
+    .muted { color: var(--muted); }
 
-    h1, h2, h3, p {
-      margin: 0;
-    }
-
-    .muted {
-      color: var(--muted);
-    }
-
-    .hero,
-    .nav,
-    .row,
-    .actions {
+    .hero, .nav, .row, .actions, .segment {
       display: flex;
       gap: 10px;
       flex-wrap: wrap;
@@ -116,12 +94,9 @@
       margin-bottom: 18px;
     }
 
-    .nav {
-      margin-bottom: 18px;
-    }
+    .nav { margin-bottom: 18px; }
 
-    .nav button,
-    .btn {
+    .nav button, .btn {
       border: 1px solid var(--line);
       background: rgba(26, 37, 64, 0.88);
       color: var(--text);
@@ -131,14 +106,12 @@
       transition: background-color .18s ease, transform .18s ease, border-color .18s ease;
     }
 
-    .nav button:hover,
-    .btn:hover {
+    .nav button:hover, .btn:hover {
       transform: translateY(-1px);
       border-color: rgba(122, 162, 255, 0.45);
     }
 
-    .nav button.active,
-    .btn.primary {
+    .nav button.active, .btn.primary, .segment button.active {
       background: linear-gradient(135deg, var(--primary), var(--primary-strong));
       border-color: transparent;
     }
@@ -155,6 +128,15 @@
       color: #ffd6d6;
     }
 
+    .segment button {
+      border: 1px solid var(--line);
+      background: rgba(12, 21, 39, 0.92);
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+    }
+
     .grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -168,13 +150,8 @@
       gap: 16px;
     }
 
-    .section {
-      display: none;
-    }
-
-    .section.active {
-      display: block;
-    }
+    .section { display: none; }
+    .section.active { display: block; }
 
     .field {
       display: grid;
@@ -182,8 +159,7 @@
       margin: 12px 0;
     }
 
-    .field input,
-    .field select {
+    .field input, .field select {
       width: 100%;
       padding: 11px 12px;
       border-radius: 12px;
@@ -193,8 +169,7 @@
       outline: none;
     }
 
-    .field input:focus,
-    .field select:focus {
+    .field input:focus, .field select:focus {
       border-color: rgba(66, 156, 255, 0.75);
       box-shadow: 0 0 0 3px rgba(33, 150, 255, 0.14);
     }
@@ -205,8 +180,7 @@
       margin-top: 10px;
     }
 
-    th,
-    td {
+    th, td {
       padding: 10px 8px;
       border-bottom: 1px solid rgba(158, 176, 210, 0.1);
       text-align: left;
@@ -253,9 +227,7 @@
     }
 
     @media (max-width: 900px) {
-      .two {
-        grid-template-columns: 1fr;
-      }
+      .two { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -265,8 +237,12 @@
       <h1>emby-media-portal</h1>
       <p class="muted" style="margin-top:8px">分别管理用户限速、客户端限速和流量统计。</p>
       <div class="field">
-        <label for="tokenInput">管理令牌</label>
-        <input id="tokenInput" type="password" placeholder="输入 admin_token">
+        <label for="usernameInput">用户名</label>
+        <input id="usernameInput" placeholder="输入管理员用户名">
+      </div>
+      <div class="field">
+        <label for="passwordInput">密码</label>
+        <input id="passwordInput" type="password" placeholder="输入管理员密码">
       </div>
       <button id="loginButton" class="btn primary" style="width:100%" onclick="login()">登录</button>
     </div>
@@ -281,7 +257,7 @@
       <div class="actions">
         <button class="btn" onclick="syncUsers()">同步用户</button>
         <button class="btn" onclick="refreshAll()">刷新</button>
-        <button class="btn danger" onclick="logout()">退出登录</button>
+        <button class="btn danger" onclick="logout(true)">退出登录</button>
       </div>
     </div>
 
@@ -307,9 +283,7 @@
             <span class="muted">24 小时</span>
           </div>
           <table>
-            <thead>
-              <tr><th>用户</th><th>入站</th><th>出站</th><th>请求数</th></tr>
-            </thead>
+            <thead><tr><th>用户</th><th>入站</th><th>出站</th><th>请求数</th></tr></thead>
             <tbody id="overviewUsers"></tbody>
           </table>
         </div>
@@ -319,9 +293,7 @@
             <span class="muted">24 小时</span>
           </div>
           <table>
-            <thead>
-              <tr><th>客户端</th><th>出站</th><th>请求数</th></tr>
-            </thead>
+            <thead><tr><th>客户端</th><th>出站</th><th>请求数</th></tr></thead>
             <tbody id="overviewClients"></tbody>
           </table>
         </div>
@@ -333,9 +305,7 @@
         <div class="card">
           <h2>用户限速规则</h2>
           <table>
-            <thead>
-              <tr><th>ID</th><th>名称</th><th>上传</th><th>下载</th><th>转码</th><th>操作</th></tr>
-            </thead>
+            <thead><tr><th>ID</th><th>名称</th><th>上传</th><th>下载</th><th>转码</th><th>操作</th></tr></thead>
             <tbody id="usersTable"></tbody>
           </table>
         </div>
@@ -365,9 +335,7 @@
         <div class="card">
           <h2>按 User-Agent 识别的客户端</h2>
           <table>
-            <thead>
-              <tr><th>ID</th><th>客户端名称</th><th>User-Agent 规则</th><th>上传</th><th>下载</th><th>操作</th></tr>
-            </thead>
+            <thead><tr><th>ID</th><th>客户端名称</th><th>User-Agent 规则</th><th>上传</th><th>下载</th><th>操作</th></tr></thead>
             <tbody id="clientsTable"></tbody>
           </table>
         </div>
@@ -391,11 +359,11 @@
         <div class="row" style="justify-content:space-between">
           <h2>流量统计</h2>
           <div class="actions">
-            <select id="trafficRange" onchange="loadTraffic()">
-              <option value="day">最近 24 小时</option>
-              <option value="week">最近 7 天</option>
-              <option value="month">最近 30 天</option>
-            </select>
+            <div id="trafficRangeSegment" class="segment">
+              <button class="active" data-range="day" onclick="setTrafficRange('day')">最近 24 小时</button>
+              <button data-range="week" onclick="setTrafficRange('week')">最近 7 天</button>
+              <button data-range="month" onclick="setTrafficRange('month')">最近 30 天</button>
+            </div>
             <button class="btn" onclick="loadTraffic()">刷新统计</button>
           </div>
         </div>
@@ -403,18 +371,14 @@
           <div>
             <h3>按用户</h3>
             <table>
-              <thead>
-                <tr><th>用户</th><th>入站</th><th>出站</th><th>请求数</th></tr>
-              </thead>
+              <thead><tr><th>用户</th><th>入站</th><th>出站</th><th>请求数</th></tr></thead>
               <tbody id="trafficUsers"></tbody>
             </table>
           </div>
           <div>
             <h3>按客户端</h3>
             <table>
-              <thead>
-                <tr><th>客户端</th><th>设备</th><th>入站</th><th>出站</th><th>请求数</th></tr>
-              </thead>
+              <thead><tr><th>客户端</th><th>设备</th><th>入站</th><th>出站</th><th>请求数</th></tr></thead>
               <tbody id="trafficClients"></tbody>
             </table>
           </div>
@@ -425,16 +389,23 @@
     <section id="settings" class="section">
       <div class="two">
         <div class="card">
-          <h2>默认限速</h2>
+          <h2>系统设置</h2>
+          <div class="field"><label for="embyUrl">Emby 地址</label><input id="embyUrl" placeholder="https://emby.example.com"></div>
+          <div class="field"><label for="embyApiKey">Emby API Key</label><input id="embyApiKey" placeholder="输入 Emby API Key"></div>
           <div class="field"><label for="defaultUpload">默认上传限速</label><input id="defaultUpload" type="number" value="0"></div>
           <div class="field"><label for="defaultDownload">默认下载限速</label><input id="defaultDownload" type="number" value="0"></div>
           <div class="field"><label for="globalLimit">全局限速</label><input id="globalLimit" type="number" value="0"></div>
           <button class="btn primary" onclick="saveSettings()">保存设置</button>
         </div>
         <div class="card">
-          <h2>统计清理</h2>
-          <div class="field"><label for="cleanDays">删除多少天前的数据</label><input id="cleanDays" type="number" value="30"></div>
-          <button class="btn danger" onclick="cleanStats()">清理统计</button>
+          <h2>管理员登录</h2>
+          <div class="field"><label for="adminUsername">管理员用户名</label><input id="adminUsername" placeholder="输入管理员用户名"></div>
+          <div class="field"><label for="adminPassword">管理员密码</label><input id="adminPassword" type="password" placeholder="输入管理员密码"></div>
+          <div class="field"><label for="cleanDays">删除多少天前的统计数据</label><input id="cleanDays" type="number" value="30"></div>
+          <div class="actions">
+            <button class="btn primary" onclick="saveSettings()">保存登录配置</button>
+            <button class="btn danger" onclick="cleanStats()">清理统计</button>
+          </div>
         </div>
       </div>
     </section>
@@ -443,10 +414,11 @@
   <div id="toast" class="toast"></div>
 
   <script>
-    let apiToken = "";
+    let authHeader = "";
     let editingUserId = "";
     let editingClientId = "";
     let isRefreshing = false;
+    let currentTrafficRange = "day";
 
     document.querySelectorAll(".nav button").forEach((btn) => btn.addEventListener("click", () => showSection(btn.dataset.section)));
 
@@ -465,7 +437,7 @@
         ...options,
         headers: {
           "Content-Type": "application/json",
-          "Authorization": apiToken,
+          ...(authHeader ? { "Authorization": authHeader } : {}),
           ...(options.headers || {})
         }
       });
@@ -494,9 +466,17 @@
       document.getElementById("appView").classList.toggle("hidden", !authenticated);
     }
 
-    async function bootstrapWithSavedToken(savedToken) {
-      apiToken = savedToken;
-      document.getElementById("tokenInput").value = savedToken;
+    function persistAuth(authorization, username, password) {
+      authHeader = authorization;
+      localStorage.setItem("emby_mp_auth", authorization);
+      localStorage.setItem("emby_mp_username", username);
+      localStorage.setItem("emby_mp_password", password);
+    }
+
+    async function bootstrapWithSavedAuth(savedAuth, username, password) {
+      authHeader = savedAuth;
+      document.getElementById("usernameInput").value = username || "";
+      document.getElementById("passwordInput").value = password || "";
       setAuthenticatedState(true);
       try {
         await loadOverview();
@@ -507,21 +487,33 @@
     }
 
     async function login() {
-      const token = document.getElementById("tokenInput").value.trim();
-      if (!token) {
-        toast("请输入管理令牌");
+      const username = document.getElementById("usernameInput").value.trim();
+      const password = document.getElementById("passwordInput").value;
+      if (!username || !password) {
+        toast("请输入用户名和密码");
         return;
       }
 
-      apiToken = token;
       const loginButton = document.getElementById("loginButton");
       loginButton.disabled = true;
       loginButton.textContent = "登录中...";
 
       try {
-        await loadOverview();
-        localStorage.setItem("emby_fc_token", apiToken);
+        const result = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password })
+        }).then(async (response) => {
+          const payload = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            throw new Error(payload.error || `HTTP ${response.status}`);
+          }
+          return payload;
+        });
+
+        persistAuth(result.authorization, username, password);
         setAuthenticatedState(true);
+        await loadOverview();
       } catch (error) {
         setAuthenticatedState(false);
         toast(`登录失败：${error.message}`);
@@ -532,19 +524,26 @@
     }
 
     function logout(showToast = false) {
-      apiToken = "";
-      localStorage.removeItem("emp_token");
-      localStorage.removeItem("emby_fc_token");
+      authHeader = "";
+      localStorage.removeItem("emby_mp_auth");
+      localStorage.removeItem("emby_mp_username");
+      localStorage.removeItem("emby_mp_password");
       setAuthenticatedState(false);
       if (showToast) {
         toast("已退出登录");
       }
     }
 
+    function setTrafficRange(range) {
+      currentTrafficRange = range;
+      document.querySelectorAll("#trafficRangeSegment button").forEach((button) => {
+        button.classList.toggle("active", button.dataset.range === range);
+      });
+      loadTraffic();
+    }
+
     async function refreshAll() {
-      if (isRefreshing) {
-        return;
-      }
+      if (isRefreshing) return;
       isRefreshing = true;
       try {
         await Promise.all([loadOverview(), loadUsers(), loadClients(), loadTraffic(), loadSettings()]);
@@ -583,36 +582,23 @@
         totalIn += item.total_bytes_in || 0;
         totalOut += item.total_bytes_out || 0;
       });
-
       document.getElementById("statIn").textContent = formatBytes(totalIn);
       document.getElementById("statOut").textContent = formatBytes(totalOut);
 
-      rows(
-        "overviewUsers",
-        userStats.slice(0, 8),
-        (item) => `<tr><td>${safe(item.user_id || "未知")}</td><td>${formatBytes(item.total_bytes_in)}</td><td>${formatBytes(item.total_bytes_out)}</td><td>${item.request_count || 0}</td></tr>`,
-        4,
-        "暂无用户数据"
-      );
+      rows("overviewUsers", userStats.slice(0, 8), (item) =>
+        `<tr><td>${safe(item.user_name || item.user_id || "未知")}</td><td>${formatBytes(item.total_bytes_in)}</td><td>${formatBytes(item.total_bytes_out)}</td><td>${item.request_count || 0}</td></tr>`,
+      4, "暂无用户数据");
 
-      rows(
-        "overviewClients",
-        clientStats.slice(0, 8),
-        (item) => `<tr><td>${safe(item.client_name || item.client_id || "未知")}</td><td>${formatBytes(item.total_bytes_out)}</td><td>${item.request_count || 0}</td></tr>`,
-        3,
-        "暂无客户端数据"
-      );
+      rows("overviewClients", clientStats.slice(0, 8), (item) =>
+        `<tr><td>${safe(item.client_name || item.client_id || "未知")}</td><td>${formatBytes(item.total_bytes_out)}</td><td>${item.request_count || 0}</td></tr>`,
+      3, "暂无客户端数据");
     }
 
     async function loadUsers() {
       const users = await api("/users");
-      rows(
-        "usersTable",
-        users,
-        (item) => `<tr><td><code>${safe(item.id)}</code></td><td>${safe(item.name || "-")}</td><td>${formatSpeed(item.upload_limit)}</td><td>${formatSpeed(item.download_limit)}</td><td><span class="tag">${item.transcode_allowed ? "允许" : "禁止"}</span></td><td><div class="actions"><button class="btn" onclick='editUser(${JSON.stringify(JSON.stringify(item))})'>编辑</button><button class="btn danger" onclick='deleteUser(${JSON.stringify(item.id)})'>删除</button></div></td></tr>`,
-        6,
-        "暂无用户规则"
-      );
+      rows("usersTable", users, (item) =>
+        `<tr><td><code>${safe(item.id)}</code></td><td>${safe(item.name || "-")}</td><td>${formatSpeed(item.upload_limit)}</td><td>${formatSpeed(item.download_limit)}</td><td><span class="tag">${item.transcode_allowed ? "允许" : "禁止"}</span></td><td><div class="actions"><button class="btn" onclick='editUser(${JSON.stringify(JSON.stringify(item))})'>编辑</button><button class="btn danger" onclick='deleteUser(${JSON.stringify(item.id)})'>删除</button></div></td></tr>`,
+      6, "暂无用户规则");
     }
 
     function editUser(payload) {
@@ -629,9 +615,7 @@
     function resetUserForm() {
       editingUserId = "";
       document.getElementById("userTitle").textContent = "新建或编辑用户规则";
-      ["userId", "userName"].forEach((id) => {
-        document.getElementById(id).value = "";
-      });
+      ["userId", "userName"].forEach((id) => { document.getElementById(id).value = ""; });
       document.getElementById("userUpload").value = 0;
       document.getElementById("userDownload").value = 0;
       document.getElementById("userTranscode").value = "true";
@@ -660,26 +644,18 @@
     }
 
     async function deleteUser(id) {
-      if (!confirm(`确定删除用户规则 ${id} 吗？`)) {
-        return;
-      }
+      if (!confirm(`确定删除用户规则 ${id} 吗？`)) return;
       await api(`/users/${encodeURIComponent(id)}`, { method: "DELETE" });
-      if (editingUserId === id) {
-        resetUserForm();
-      }
+      if (editingUserId === id) resetUserForm();
       await Promise.all([loadUsers(), loadOverview()]);
       toast("用户规则已删除");
     }
 
     async function loadClients() {
       const clients = await api("/clients");
-      rows(
-        "clientsTable",
-        clients,
-        (item) => `<tr><td><code>${safe(item.id)}</code></td><td>${safe(item.name || "-")}</td><td><span class="tag">user_agent</span><div class="muted">${safe(item.match_value)}</div></td><td>${formatSpeed(item.upload_limit)}</td><td>${formatSpeed(item.download_limit)}</td><td><div class="actions"><button class="btn" onclick='editClient(${JSON.stringify(JSON.stringify(item))})'>编辑</button><button class="btn danger" onclick='deleteClient(${JSON.stringify(item.id)})'>删除</button></div></td></tr>`,
-        6,
-        "暂无客户端规则"
-      );
+      rows("clientsTable", clients, (item) =>
+        `<tr><td><code>${safe(item.id)}</code></td><td>${safe(item.name || "-")}</td><td><span class="tag">user_agent</span><div class="muted">${safe(item.match_value)}</div></td><td>${formatSpeed(item.upload_limit)}</td><td>${formatSpeed(item.download_limit)}</td><td><div class="actions"><button class="btn" onclick='editClient(${JSON.stringify(JSON.stringify(item))})'>编辑</button><button class="btn danger" onclick='deleteClient(${JSON.stringify(item.id)})'>删除</button></div></td></tr>`,
+      6, "暂无客户端规则");
     }
 
     function editClient(payload) {
@@ -696,9 +672,7 @@
     function resetClientForm() {
       editingClientId = "";
       document.getElementById("clientTitle").textContent = "新建或编辑客户端 User-Agent 规则";
-      ["clientRuleId", "clientRuleName", "clientMatchValue"].forEach((id) => {
-        document.getElementById(id).value = "";
-      });
+      ["clientRuleId", "clientRuleName", "clientMatchValue"].forEach((id) => { document.getElementById(id).value = ""; });
       document.getElementById("clientUpload").value = 0;
       document.getElementById("clientDownload").value = 0;
     }
@@ -728,81 +702,80 @@
     }
 
     async function deleteClient(id) {
-      if (!confirm(`确定删除客户端规则 ${id} 吗？`)) {
-        return;
-      }
+      if (!confirm(`确定删除客户端规则 ${id} 吗？`)) return;
       await api(`/clients/${encodeURIComponent(id)}`, { method: "DELETE" });
-      if (editingClientId === id) {
-        resetClientForm();
-      }
+      if (editingClientId === id) resetClientForm();
       await Promise.all([loadClients(), loadOverview()]);
       toast("客户端规则已删除");
     }
 
     async function loadTraffic() {
-      const range = document.getElementById("trafficRange").value;
       const [users, clients] = await Promise.all([
-        api(`/traffic/users?since=${range}`),
-        api(`/traffic/clients?since=${range}`)
+        api(`/traffic/users?since=${currentTrafficRange}`),
+        api(`/traffic/clients?since=${currentTrafficRange}`)
       ]);
 
-      rows(
-        "trafficUsers",
-        users,
-        (item) => `<tr><td>${safe(item.user_id || "未知")}</td><td>${formatBytes(item.total_bytes_in)}</td><td>${formatBytes(item.total_bytes_out)}</td><td>${item.request_count || 0}</td></tr>`,
-        4,
-        "暂无用户统计"
-      );
+      rows("trafficUsers", users, (item) =>
+        `<tr><td>${safe(item.user_name || item.user_id || "未知")}</td><td>${formatBytes(item.total_bytes_in)}</td><td>${formatBytes(item.total_bytes_out)}</td><td>${item.request_count || 0}</td></tr>`,
+      4, "暂无用户统计");
 
-      rows(
-        "trafficClients",
-        clients,
-        (item) => `<tr><td>${safe(item.client_name || item.client_id || "未知")}</td><td>${safe(item.device_name || item.device_id || "-")}</td><td>${formatBytes(item.total_bytes_in)}</td><td>${formatBytes(item.total_bytes_out)}</td><td>${item.request_count || 0}</td></tr>`,
-        5,
-        "暂无客户端统计"
-      );
+      rows("trafficClients", clients, (item) =>
+        `<tr><td>${safe(item.client_name || item.client_id || "未知")}</td><td>${safe(item.device_name || item.device_id || "-")}</td><td>${formatBytes(item.total_bytes_in)}</td><td>${formatBytes(item.total_bytes_out)}</td><td>${item.request_count || 0}</td></tr>`,
+      5, "暂无客户端统计");
     }
 
     async function loadSettings() {
       const settings = await api("/rules/defaults");
+      document.getElementById("embyUrl").value = settings.emby_url || "";
+      document.getElementById("embyApiKey").value = settings.emby_api_key || "";
       document.getElementById("defaultUpload").value = settings.default_upload || 0;
       document.getElementById("defaultDownload").value = settings.default_download || 0;
       document.getElementById("globalLimit").value = settings.global_limit || 0;
+      document.getElementById("adminUsername").value = settings.admin_username || "";
+      document.getElementById("adminPassword").value = settings.admin_password || "";
     }
 
     async function saveSettings() {
-      await api("/rules/defaults", {
+      const payload = {
+        emby_url: document.getElementById("embyUrl").value.trim(),
+        emby_api_key: document.getElementById("embyApiKey").value.trim(),
+        default_upload: Number(document.getElementById("defaultUpload").value) || 0,
+        default_download: Number(document.getElementById("defaultDownload").value) || 0,
+        global_limit: Number(document.getElementById("globalLimit").value) || 0,
+        admin_username: document.getElementById("adminUsername").value.trim(),
+        admin_password: document.getElementById("adminPassword").value
+      };
+
+      const result = await api("/rules/defaults", {
         method: "PUT",
-        body: JSON.stringify({
-          default_upload: Number(document.getElementById("defaultUpload").value) || 0,
-          default_download: Number(document.getElementById("defaultDownload").value) || 0,
-          global_limit: Number(document.getElementById("globalLimit").value) || 0
-        })
+        body: JSON.stringify(payload)
       });
-      toast("设置已保存");
+
+      if (payload.admin_username && payload.admin_password) {
+        const authorization = "Basic " + btoa(`${payload.admin_username}:${payload.admin_password}`);
+        persistAuth(authorization, payload.admin_username, payload.admin_password);
+      }
+
+      toast(result.message || "设置已保存");
     }
 
     async function cleanStats() {
       const days = Number(document.getElementById("cleanDays").value) || 30;
-      if (!confirm(`确定删除 ${days} 天前的统计数据吗？`)) {
-        return;
-      }
+      if (!confirm(`确定删除 ${days} 天前的统计数据吗？`)) return;
       await api(`/traffic/clean?days=${days}`, { method: "DELETE" });
       await Promise.all([loadTraffic(), loadOverview()]);
       toast("统计数据已清理");
     }
 
-    function rows(id, list, renderer, colspan, empty) {
+    function rows(id, list, renderer, colspan, emptyText) {
       document.getElementById(id).innerHTML = !list || !list.length
-        ? `<tr><td class="empty" colspan="${colspan}">${empty}</td></tr>`
+        ? `<tr><td class="empty" colspan="${colspan}">${emptyText}</td></tr>`
         : list.map(renderer).join("");
     }
 
     function formatBytes(value) {
       const size = Number(value) || 0;
-      if (!size) {
-        return "0 B";
-      }
+      if (!size) return "0 B";
       const units = ["B", "KB", "MB", "GB", "TB"];
       const index = Math.min(Math.floor(Math.log(size) / Math.log(1024)), units.length - 1);
       return `${(size / Math.pow(1024, index)).toFixed(2)} ${units[index]}`;
@@ -822,16 +795,20 @@
         .replaceAll("'", "&#39;");
     }
 
-    const savedToken = localStorage.getItem("emby_fc_token");
-    if (savedToken) {
-      bootstrapWithSavedToken(savedToken);
+    const savedAuth = localStorage.getItem("emby_mp_auth");
+    const savedUsername = localStorage.getItem("emby_mp_username") || "";
+    const savedPassword = localStorage.getItem("emby_mp_password") || "";
+    if (savedAuth) {
+      bootstrapWithSavedAuth(savedAuth, savedUsername, savedPassword);
     }
 
-    document.getElementById("tokenInput").addEventListener("keydown", (event) => {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        login();
-      }
+    ["usernameInput", "passwordInput"].forEach((id) => {
+      document.getElementById(id).addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          login();
+        }
+      });
     });
   </script>
 </body>

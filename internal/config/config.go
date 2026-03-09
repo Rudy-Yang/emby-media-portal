@@ -8,16 +8,18 @@ import (
 )
 
 type Config struct {
-	Server      ServerConfig      `yaml:"server"`
-	Emby        EmbyConfig        `yaml:"emby"`
-	Backend     BackendConfig     `yaml:"backend"`
-	RateLimits  RateLimitsConfig  `yaml:"rate_limits"`
-	Database    DatabaseConfig    `yaml:"database"`
+	Server     ServerConfig     `yaml:"server"`
+	Emby       EmbyConfig       `yaml:"emby"`
+	Backend    BackendConfig    `yaml:"backend"`
+	RateLimits RateLimitsConfig `yaml:"rate_limits"`
+	Database   DatabaseConfig   `yaml:"database"`
 }
 
 type ServerConfig struct {
-	Listen     string `yaml:"listen"`
-	AdminToken string `yaml:"admin_token"`
+	Listen        string `yaml:"listen"`
+	AdminToken    string `yaml:"admin_token"`
+	AdminUsername string `yaml:"admin_username"`
+	AdminPassword string `yaml:"admin_password"`
 }
 
 type EmbyConfig struct {
@@ -26,7 +28,7 @@ type EmbyConfig struct {
 }
 
 type BackendConfig struct {
-	Type     string `yaml:"type"`      // "direct" forwards to Emby, "lucky" forwards to Lucky
+	Type     string `yaml:"type"` // "direct" forwards to Emby, "lucky" forwards to Lucky
 	LuckyURL string `yaml:"lucky_url"`
 	ServerID string `yaml:"server_id"`
 }
@@ -43,6 +45,7 @@ type DatabaseConfig struct {
 
 var (
 	cfg     *Config
+	cfgPath string
 	cfgOnce sync.Once
 	cfgMu   sync.RWMutex
 )
@@ -62,12 +65,24 @@ func Load(path string) (*Config, error) {
 	if c.Server.Listen == "" {
 		c.Server.Listen = ":8095"
 	}
+	if c.Server.AdminUsername == "" {
+		c.Server.AdminUsername = "admin"
+	}
+	if c.Server.AdminPassword == "" {
+		switch {
+		case c.Server.AdminToken != "":
+			c.Server.AdminPassword = c.Server.AdminToken
+		default:
+			c.Server.AdminPassword = "admin123"
+		}
+	}
 	if c.Database.Path == "" {
 		c.Database.Path = "./data/config.db"
 	}
 
 	cfgMu.Lock()
 	cfg = &c
+	cfgPath = path
 	cfgMu.Unlock()
 
 	return &c, nil
@@ -83,4 +98,23 @@ func Update(newCfg *Config) {
 	cfgMu.Lock()
 	cfg = newCfg
 	cfgMu.Unlock()
+}
+
+func Save(current *Config) error {
+	cfgMu.Lock()
+	defer cfgMu.Unlock()
+
+	if current != nil {
+		cfg = current
+	}
+	if cfg == nil {
+		return nil
+	}
+
+	data, err := yaml.Marshal(cfg)
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(cfgPath, data, 0644)
 }

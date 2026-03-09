@@ -67,6 +67,9 @@ func main() {
 	router.Use(middleware.CORS())
 
 	// API routes
+	authHandler := handler.NewAuthHandler()
+	router.POST("/api/auth/login", authHandler.Login)
+
 	api := router.Group("/api")
 	api.Use(middleware.AuthRequired())
 	{
