@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"runtime"
 
 	"emby-media-portal/internal/auth"
 	"emby-media-portal/internal/database"
@@ -28,11 +29,10 @@ func NewUserHandler(identifier *auth.Identifier, rulesManager *ratelimit.RulesMa
 
 // UserResponse represents a user in API response
 type UserResponse struct {
-	ID              string `json:"id"`
-	Name            string `json:"name"`
-	UploadLimit     int64  `json:"upload_limit"`
-	DownloadLimit   int64  `json:"download_limit"`
-	TranscodeAllowed bool   `json:"transcode_allowed"`
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	UploadLimit   int64  `json:"upload_limit"`
+	DownloadLimit int64  `json:"download_limit"`
 }
 
 // ListUsers returns all users with their rules
@@ -47,11 +47,10 @@ func (h *UserHandler) ListUsers(c *gin.Context) {
 	users := make([]UserResponse, len(rules))
 	for i, rule := range rules {
 		users[i] = UserResponse{
-			ID:               rule.UserID,
-			Name:             rule.UserName,
-			UploadLimit:      rule.UploadLimit,
-			DownloadLimit:    rule.DownloadLimit,
-			TranscodeAllowed: rule.TranscodeAllowed,
+			ID:            rule.UserID,
+			Name:          rule.UserName,
+			UploadLimit:   rule.UploadLimit,
+			DownloadLimit: rule.DownloadLimit,
 		}
 	}
 
@@ -74,11 +73,10 @@ func (h *UserHandler) SyncUsers(c *gin.Context) {
 			// Create new user with default limits
 			defaultUpload, defaultDownload := h.limiterManager.GetDefaults()
 			rule := &ratelimit.UserRule{
-				UserID:           user.ID,
-				UserName:         user.Name,
-				UploadLimit:      defaultUpload,
-				DownloadLimit:    defaultDownload,
-				TranscodeAllowed: true,
+				UserID:        user.ID,
+				UserName:      user.Name,
+				UploadLimit:   defaultUpload,
+				DownloadLimit: defaultDownload,
 			}
 			if err := h.rulesManager.SetUserRule(rule); err == nil {
 				synced++
@@ -87,9 +85,9 @@ func (h *UserHandler) SyncUsers(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message":  "Users synced successfully",
-		"synced":   synced,
-		"total":    len(users),
+		"message": "Users synced successfully",
+		"synced":  synced,
+		"total":   len(users),
 	})
 }
 
@@ -113,20 +111,18 @@ func (h *UserHandler) GetUserRule(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, UserResponse{
-		ID:               rule.UserID,
-		Name:             rule.UserName,
-		UploadLimit:      rule.UploadLimit,
-		DownloadLimit:    rule.DownloadLimit,
-		TranscodeAllowed: rule.TranscodeAllowed,
+		ID:            rule.UserID,
+		Name:          rule.UserName,
+		UploadLimit:   rule.UploadLimit,
+		DownloadLimit: rule.DownloadLimit,
 	})
 }
 
 // UpdateUserRuleRequest represents the request body for updating user rules
 type UpdateUserRuleRequest struct {
-	Name            string `json:"name"`
-	UploadLimit     int64  `json:"upload_limit"`
-	DownloadLimit   int64  `json:"download_limit"`
-	TranscodeAllowed *bool  `json:"transcode_allowed"`
+	Name          string `json:"name"`
+	UploadLimit   int64  `json:"upload_limit"`
+	DownloadLimit int64  `json:"download_limit"`
 }
 
 // UpdateUserRule updates a user's rate limit rule
@@ -151,19 +147,11 @@ func (h *UserHandler) UpdateUserRule(c *gin.Context) {
 		name = existing.UserName
 	}
 
-	transcodeAllowed := true
-	if req.TranscodeAllowed != nil {
-		transcodeAllowed = *req.TranscodeAllowed
-	} else if existing != nil {
-		transcodeAllowed = existing.TranscodeAllowed
-	}
-
 	rule := &ratelimit.UserRule{
-		UserID:           userID,
-		UserName:         name,
-		UploadLimit:      req.UploadLimit,
-		DownloadLimit:    req.DownloadLimit,
-		TranscodeAllowed: transcodeAllowed,
+		UserID:        userID,
+		UserName:      name,
+		UploadLimit:   req.UploadLimit,
+		DownloadLimit: req.DownloadLimit,
 	}
 
 	if err := h.rulesManager.SetUserRule(rule); err != nil {
@@ -174,11 +162,10 @@ func (h *UserHandler) UpdateUserRule(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": "User rule updated successfully",
 		"user": UserResponse{
-			ID:               rule.UserID,
-			Name:             rule.UserName,
-			UploadLimit:      rule.UploadLimit,
-			DownloadLimit:    rule.DownloadLimit,
-			TranscodeAllowed: rule.TranscodeAllowed,
+			ID:            rule.UserID,
+			Name:          rule.UserName,
+			UploadLimit:   rule.UploadLimit,
+			DownloadLimit: rule.DownloadLimit,
 		},
 	})
 }
@@ -210,9 +197,13 @@ func (h *UserHandler) GetServerStats(c *gin.Context) {
 	var userCount, serverCount int64
 	db.QueryRow("SELECT COUNT(*) FROM users").Scan(&userCount)
 	db.QueryRow("SELECT COUNT(*) FROM servers").Scan(&serverCount)
+	var mem runtime.MemStats
+	runtime.ReadMemStats(&mem)
 
 	c.JSON(http.StatusOK, gin.H{
-		"user_count":   userCount,
-		"server_count": serverCount,
+		"user_count":        userCount,
+		"server_count":      serverCount,
+		"memory_alloc":      mem.Alloc,
+		"memory_heap_inuse": mem.HeapInuse,
 	})
 }

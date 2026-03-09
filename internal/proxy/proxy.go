@@ -18,17 +18,15 @@ import (
 	"emby-media-portal/internal/config"
 	"emby-media-portal/internal/ratelimit"
 	"emby-media-portal/internal/stats"
-	"emby-media-portal/internal/transcode"
 )
 
 // Proxy is the main reverse proxy
 type Proxy struct {
-	identifier      *auth.Identifier
-	limiterManager  *ratelimit.Manager
-	rulesManager    *ratelimit.RulesManager
-	transcodeCtrl   *transcode.Controller
-	statsTracker    *stats.Tracker
-	transport       *http.Transport
+	identifier     *auth.Identifier
+	limiterManager *ratelimit.Manager
+	rulesManager   *ratelimit.RulesManager
+	statsTracker   *stats.Tracker
+	transport      *http.Transport
 }
 
 // NewProxy creates a new proxy instance
@@ -36,14 +34,12 @@ func NewProxy(
 	identifier *auth.Identifier,
 	limiterManager *ratelimit.Manager,
 	rulesManager *ratelimit.RulesManager,
-	transcodeCtrl *transcode.Controller,
 	statsTracker *stats.Tracker,
 ) *Proxy {
 	return &Proxy{
 		identifier:     identifier,
 		limiterManager: limiterManager,
 		rulesManager:   rulesManager,
-		transcodeCtrl:  transcodeCtrl,
 		statsTracker:   statsTracker,
 		transport: &http.Transport{
 			MaxIdleConns:        100,
@@ -110,17 +106,6 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		userID = user.ID
 	}
 	trafficKind = classifyTraffic(r, userID)
-
-	// Check transcode permission
-	if userID != "" && p.transcodeCtrl.IsTranscodeRequest(r) {
-		blocked, err := p.transcodeCtrl.ShouldBlockTranscode(r, userID)
-		if err != nil {
-			log.Printf("Error checking transcode permission: %v", err)
-		} else if blocked {
-			http.Error(w, "Transcoding not allowed for this user", http.StatusForbidden)
-			return
-		}
-	}
 
 	// Get rate limiter for user
 	var limiter *ratelimit.Limiter

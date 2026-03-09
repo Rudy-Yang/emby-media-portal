@@ -50,7 +50,6 @@ func createTables() error {
 			name TEXT,
 			upload_limit INTEGER DEFAULT 0,
 			download_limit INTEGER DEFAULT 0,
-			transcode_allowed BOOLEAN DEFAULT 1,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		)`,

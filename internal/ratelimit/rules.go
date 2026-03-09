@@ -9,19 +9,18 @@ import (
 
 // UserRule represents rate limit rules for a user
 type UserRule struct {
-	UserID         string `json:"user_id"`
-	UserName       string `json:"user_name"`
-	UploadLimit    int64  `json:"upload_limit"`
-	DownloadLimit  int64  `json:"download_limit"`
-	TranscodeAllowed bool  `json:"transcode_allowed"`
+	UserID        string `json:"user_id"`
+	UserName      string `json:"user_name"`
+	UploadLimit   int64  `json:"upload_limit"`
+	DownloadLimit int64  `json:"download_limit"`
 }
 
 // ServerRule represents rate limit rules for a server
 type ServerRule struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	URL       string `json:"url"`
-	TotalLimit int64 `json:"total_limit"`
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	URL        string `json:"url"`
+	TotalLimit int64  `json:"total_limit"`
 }
 
 // ClientRule represents a shared limit rule for a client family or device.
@@ -55,9 +54,9 @@ func (r *RulesManager) GetUserRule(userID string) (*UserRule, error) {
 
 	rule := &UserRule{UserID: userID}
 	err := db.QueryRow(
-		"SELECT name, upload_limit, download_limit, transcode_allowed FROM users WHERE id = ?",
+		"SELECT name, upload_limit, download_limit FROM users WHERE id = ?",
 		userID,
-	).Scan(&rule.UserName, &rule.UploadLimit, &rule.DownloadLimit, &rule.TranscodeAllowed)
+	).Scan(&rule.UserName, &rule.UploadLimit, &rule.DownloadLimit)
 
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -77,7 +76,7 @@ func (r *RulesManager) GetAllUserRules() ([]UserRule, error) {
 	}
 
 	rows, err := db.Query(
-		"SELECT id, name, upload_limit, download_limit, transcode_allowed FROM users",
+		"SELECT id, name, upload_limit, download_limit FROM users",
 	)
 	if err != nil {
 		return nil, err
@@ -88,7 +87,7 @@ func (r *RulesManager) GetAllUserRules() ([]UserRule, error) {
 	for rows.Next() {
 		var rule UserRule
 		if err := rows.Scan(&rule.UserID, &rule.UserName, &rule.UploadLimit,
-			&rule.DownloadLimit, &rule.TranscodeAllowed); err != nil {
+			&rule.DownloadLimit); err != nil {
 			return nil, err
 		}
 		rules = append(rules, rule)
@@ -105,15 +104,14 @@ func (r *RulesManager) SetUserRule(rule *UserRule) error {
 	}
 
 	_, err := db.Exec(
-		`INSERT INTO users (id, name, upload_limit, download_limit, transcode_allowed)
-		 VALUES (?, ?, ?, ?, ?)
+		`INSERT INTO users (id, name, upload_limit, download_limit)
+		 VALUES (?, ?, ?, ?)
 		 ON CONFLICT(id) DO UPDATE SET
 		 name = excluded.name,
 		 upload_limit = excluded.upload_limit,
 		 download_limit = excluded.download_limit,
-		 transcode_allowed = excluded.transcode_allowed,
 		 updated_at = CURRENT_TIMESTAMP`,
-		rule.UserID, rule.UserName, rule.UploadLimit, rule.DownloadLimit, rule.TranscodeAllowed,
+		rule.UserID, rule.UserName, rule.UploadLimit, rule.DownloadLimit,
 	)
 
 	if err != nil {

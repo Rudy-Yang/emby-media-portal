@@ -16,7 +16,6 @@ import (
 	"emby-media-portal/internal/proxy"
 	"emby-media-portal/internal/ratelimit"
 	"emby-media-portal/internal/stats"
-	"emby-media-portal/internal/transcode"
 	"emby-media-portal/web/static"
 
 	"github.com/gin-gonic/gin"
@@ -49,7 +48,6 @@ func main() {
 		cfg.RateLimits.GlobalLimit,
 	)
 	rulesManager := ratelimit.NewRulesManager(limiterManager)
-	transcodeCtrl := transcode.NewController(true)
 	statsTracker := stats.NewTracker(10 * time.Second)
 
 	// Load existing rules from database
@@ -58,7 +56,7 @@ func main() {
 	}
 
 	// Create proxy
-	prxy := proxy.NewProxy(identifier, limiterManager, rulesManager, transcodeCtrl, statsTracker)
+	prxy := proxy.NewProxy(identifier, limiterManager, rulesManager, statsTracker)
 	adminPath := config.NormalizeAdminPath(cfg.Server.AdminPath)
 
 	// Setup Gin router

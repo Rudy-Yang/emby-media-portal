@@ -840,6 +840,7 @@
       <div class="grid">
         <div class="card"><p class="muted">用户规则</p><h2 id="statUsers">0</h2></div>
         <div class="card"><p class="muted">客户端规则</p><h2 id="statClients">0</h2></div>
+        <div class="card"><p class="muted">程序内存占用</p><h2 id="statMemory">0 B</h2></div>
         <div class="card"><p class="muted">24 小时入站</p><h2 id="statIn">0 B</h2></div>
         <div class="card"><p class="muted">24 小时出站</p><h2 id="statOut">0 B</h2></div>
       </div>
@@ -908,13 +909,6 @@
                 <option value="bps">bps</option>
               </select>
             </div>
-          </div>
-          <div class="field">
-            <label for="userTranscode">转码权限</label>
-            <select id="userTranscode">
-              <option value="true">允许</option>
-              <option value="false">禁止</option>
-            </select>
           </div>
           <div class="actions">
             <button class="btn primary" onclick="saveUser()">保存</button>
@@ -1291,16 +1285,18 @@
     }
 
     async function loadOverview() {
-      const [users, clients, summary, userStats, clientStats] = await Promise.all([
+      const [users, clients, summary, serverStats, userStats, clientStats] = await Promise.all([
         api("/users"),
         api("/clients"),
         api("/traffic/summary?since=day"),
+        api("/stats"),
         api("/traffic/users?since=day"),
         api("/traffic/clients?since=day")
       ]);
 
       document.getElementById("statUsers").textContent = users.length;
       document.getElementById("statClients").textContent = clients.length;
+      document.getElementById("statMemory").textContent = formatBytes(serverStats.memory_alloc || 0);
       document.getElementById("statIn").textContent = formatBytes(summary.total_bytes_in);
       document.getElementById("statOut").textContent = formatBytes(summary.total_bytes_out);
 
@@ -1588,7 +1584,6 @@
         const primaryLimit = item.download_limit > 0 ? `下载 ${formatSpeed(item.download_limit)}` : "下载不限";
         const uploadLimit = item.upload_limit > 0 ? formatSpeed(item.upload_limit) : "不限";
         const downloadLimit = item.download_limit > 0 ? formatSpeed(item.download_limit) : "不限";
-        const transcodeLabel = item.transcode_allowed ? "允许转码" : "禁止转码";
         return `
           <article class="user-rule-card">
             <div class="user-card-top">
@@ -1599,7 +1594,6 @@
               </div>
               <div class="user-card-badges">
                 <span class="pill primary">${safe(primaryLimit)}</span>
-                <span class="pill ${item.transcode_allowed ? "green" : "orange"}">${safe(transcodeLabel)}</span>
               </div>
             </div>
             <div class="user-card-body">
@@ -1610,10 +1604,6 @@
               <div class="user-card-metric">
                 <div class="user-card-metric-label">下载限速</div>
                 <div class="user-card-metric-value">${safe(downloadLimit)}</div>
-              </div>
-              <div class="user-card-metric">
-                <div class="user-card-metric-label">转码权限</div>
-                <div class="user-card-metric-value">${safe(transcodeLabel)}</div>
               </div>
             </div>
             <div class="user-card-actions">
@@ -1637,7 +1627,6 @@
       document.getElementById("userUploadUnit").value = upload.unit;
       document.getElementById("userDownload").value = download.amount;
       document.getElementById("userDownloadUnit").value = download.unit;
-      document.getElementById("userTranscode").value = String(!!item.transcode_allowed);
     }
 
     function resetUserForm() {
@@ -1649,7 +1638,6 @@
       document.getElementById("userUploadUnit").value = "mbps";
       document.getElementById("userDownload").value = 0;
       document.getElementById("userDownloadUnit").value = "mbps";
-      document.getElementById("userTranscode").value = "true";
     }
 
     async function saveUser() {
@@ -1664,8 +1652,7 @@
         body: JSON.stringify({
           name: document.getElementById("userName").value.trim(),
           upload_limit: userSpeedInputToBytes("userUpload", "userUploadUnit"),
-          download_limit: userSpeedInputToBytes("userDownload", "userDownloadUnit"),
-          transcode_allowed: document.getElementById("userTranscode").value === "true"
+          download_limit: userSpeedInputToBytes("userDownload", "userDownloadUnit")
         })
       });
 
