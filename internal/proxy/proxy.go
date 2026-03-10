@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"emby-media-portal/internal/auth"
@@ -27,6 +28,14 @@ type Proxy struct {
 	rulesManager   *ratelimit.RulesManager
 	statsTracker   *stats.Tracker
 	transport      *http.Transport
+	playbackMu     sync.Mutex
+	playbackUsers  map[string]recentPlaybackUser
+}
+
+type recentPlaybackUser struct {
+	UserID    string
+	UserName  string
+	ExpiresAt time.Time
 }
 
 // NewProxy creates a new proxy instance
@@ -41,6 +50,7 @@ func NewProxy(
 		limiterManager: limiterManager,
 		rulesManager:   rulesManager,
 		statsTracker:   statsTracker,
+		playbackUsers:  make(map[string]recentPlaybackUser),
 		transport: &http.Transport{
 			MaxIdleConns:        100,
 			MaxIdleConnsPerHost: 20,
@@ -107,7 +117,17 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		userID = user.ID
 		userName = user.Name
 	}
+	client = p.identifier.IdentifyClient(r)
+	if userID == "" {
+		if recent, ok := p.lookupRecentPlaybackUser(r, client); ok {
+			userID = recent.UserID
+			userName = recent.UserName
+		}
+	}
 	trafficKind = classifyTraffic(r, userID)
+	if userID != "" {
+		p.rememberPlaybackUser(r, client, userID, userName)
+	}
 
 	// Get rate limiter for user
 	var limiter *ratelimit.Limiter
@@ -120,7 +140,6 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	client = p.identifier.IdentifyClient(r)
 	var clientLimiter *ratelimit.Limiter
 	if client != nil {
 		clientRule, ruleErr := p.rulesManager.MatchClientRule(client.ClientName, client.DeviceID, client.UserAgent)
@@ -365,6 +384,8 @@ func rewriteDiscoveryResponse(r *http.Request, resp *http.Response, backendBaseU
 }
 
 var singleItemPathPattern = regexp.MustCompile(`^/(Users/[^/]+/)?Items/[^/]+$`)
+var playbackInfoItemPathPattern = regexp.MustCompile(`(?i)^/(?:emby/)?Items/([^/]+)/PlaybackInfo$`)
+var videoItemPathPattern = regexp.MustCompile(`(?i)^/(?:emby/)?Videos/([^/]+)/`)
 
 func shouldRewriteJSONPath(path string) bool {
 	switch {
@@ -594,6 +615,98 @@ func dedupeAnyStrings(values []any) []any {
 		out = append(out, s)
 	}
 	return out
+}
+
+func (p *Proxy) rememberPlaybackUser(r *http.Request, client *auth.ClientInfo, userID, userName string) {
+	if strings.TrimSpace(userID) == "" || r == nil {
+		return
+	}
+	key := playbackContextKey(r, client)
+	if key == "" {
+		return
+	}
+
+	now := time.Now()
+	p.playbackMu.Lock()
+	defer p.playbackMu.Unlock()
+	p.cleanupPlaybackUsersLocked(now)
+	p.playbackUsers[key] = recentPlaybackUser{
+		UserID:    userID,
+		UserName:  userName,
+		ExpiresAt: now.Add(3 * time.Minute),
+	}
+}
+
+func (p *Proxy) lookupRecentPlaybackUser(r *http.Request, client *auth.ClientInfo) (recentPlaybackUser, bool) {
+	key := playbackContextKey(r, client)
+	if key == "" {
+		return recentPlaybackUser{}, false
+	}
+
+	now := time.Now()
+	p.playbackMu.Lock()
+	defer p.playbackMu.Unlock()
+	p.cleanupPlaybackUsersLocked(now)
+	recent, ok := p.playbackUsers[key]
+	if !ok || now.After(recent.ExpiresAt) {
+		return recentPlaybackUser{}, false
+	}
+	return recent, true
+}
+
+func (p *Proxy) cleanupPlaybackUsersLocked(now time.Time) {
+	for key, recent := range p.playbackUsers {
+		if now.After(recent.ExpiresAt) {
+			delete(p.playbackUsers, key)
+		}
+	}
+}
+
+func playbackContextKey(r *http.Request, client *auth.ClientInfo) string {
+	if r == nil {
+		return ""
+	}
+	itemID := playbackItemID(r.URL.Path)
+	if itemID == "" {
+		return ""
+	}
+
+	clientKey := ""
+	if client != nil {
+		switch {
+		case strings.TrimSpace(client.DeviceID) != "":
+			clientKey = "device:" + normalizePlaybackKey(client.DeviceID)
+		case strings.TrimSpace(client.ClientName) != "":
+			clientKey = "client:" + normalizePlaybackKey(client.ClientName)
+		case strings.TrimSpace(client.UserAgent) != "":
+			clientKey = "ua:" + normalizePlaybackKey(client.UserAgent)
+		}
+	}
+	if clientKey == "" {
+		if ip := clientIPFromRequest(r); ip != "" {
+			clientKey = "ip:" + normalizePlaybackKey(ip)
+		}
+	}
+	if clientKey == "" {
+		return ""
+	}
+	return clientKey + "|item:" + itemID
+}
+
+func playbackItemID(path string) string {
+	if matches := videoItemPathPattern.FindStringSubmatch(path); len(matches) > 1 {
+		return strings.TrimSpace(matches[1])
+	}
+	if matches := playbackInfoItemPathPattern.FindStringSubmatch(path); len(matches) > 1 {
+		return strings.TrimSpace(matches[1])
+	}
+	return ""
+}
+
+func normalizePlaybackKey(value string) string {
+	value = strings.TrimSpace(strings.ToLower(value))
+	value = strings.ReplaceAll(value, " ", "-")
+	return value
 }
 
 func classifyTraffic(r *http.Request, userID string) string {
