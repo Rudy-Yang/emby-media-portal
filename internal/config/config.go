@@ -36,9 +36,10 @@ type EmbyConfig struct {
 }
 
 type BackendConfig struct {
-	Type     string `yaml:"type"` // "direct" forwards to Emby, "lucky" forwards to Lucky
-	LuckyURL string `yaml:"lucky_url"`
-	ServerID string `yaml:"server_id"`
+	Type         string `yaml:"type"` // "direct" forwards to Emby, "lucky" forwards to Lucky
+	LuckyURL     string `yaml:"lucky_url"`
+	FontInAssURL string `yaml:"fontinass_url,omitempty"`
+	ServerID     string `yaml:"server_id"`
 }
 
 type RateLimitsConfig struct {

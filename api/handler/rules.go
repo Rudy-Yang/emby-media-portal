@@ -145,6 +145,7 @@ type DefaultLimitsResponse struct {
 	DefaultDownload      int64  `json:"default_download"`
 	GlobalLimit          int64  `json:"global_limit"`
 	EmbyURL              string `json:"emby_url"`
+	FontInAssURL         string `json:"fontinass_url"`
 	ListenPort           int    `json:"listen_port"`
 	AdminPath            string `json:"admin_path"`
 	AdminUsername        string `json:"admin_username"`
@@ -168,6 +169,7 @@ func (h *RulesHandler) GetDefaultLimits(c *gin.Context) {
 		DefaultDownload:      download,
 		GlobalLimit:          globalLimit,
 		EmbyURL:              currentConfigValue(func(cfg *config.Config) string { return cfg.Emby.URL }),
+		FontInAssURL:         currentConfigValue(func(cfg *config.Config) string { return cfg.Backend.FontInAssURL }),
 		ListenPort:           currentConfigValueInt(func(cfg *config.Config) int { return config.ListenPort(cfg.Server.Listen) }),
 		AdminPath:            currentConfigValue(func(cfg *config.Config) string { return config.NormalizeAdminPath(cfg.Server.AdminPath) }),
 		AdminUsername:        currentConfigValue(func(cfg *config.Config) string { return cfg.Server.AdminUsername }),
@@ -182,6 +184,7 @@ type UpdateDefaultLimitsRequest struct {
 	DefaultDownload int64  `json:"default_download"`
 	GlobalLimit     int64  `json:"global_limit"`
 	EmbyURL         string `json:"emby_url"`
+	FontInAssURL    string `json:"fontinass_url"`
 	EmbyAPIKey      string `json:"emby_api_key"`
 	ListenPort      int    `json:"listen_port"`
 	AdminPath       string `json:"admin_path"`
@@ -220,6 +223,7 @@ func (h *RulesHandler) UpdateDefaultLimits(c *gin.Context) {
 	if req.EmbyURL != "" {
 		updated.Emby.URL = req.EmbyURL
 	}
+	updated.Backend.FontInAssURL = req.FontInAssURL
 	if req.EmbyAPIKey != "" {
 		updated.Emby.APIKey = req.EmbyAPIKey
 	}
@@ -248,6 +252,7 @@ func (h *RulesHandler) UpdateDefaultLimits(c *gin.Context) {
 			DefaultDownload:      req.DefaultDownload,
 			GlobalLimit:          req.GlobalLimit,
 			EmbyURL:              updated.Emby.URL,
+			FontInAssURL:         updated.Backend.FontInAssURL,
 			ListenPort:           config.ListenPort(updated.Server.Listen),
 			AdminPath:            updated.Server.AdminPath,
 			AdminUsername:        updated.Server.AdminUsername,

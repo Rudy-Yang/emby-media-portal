@@ -67,6 +67,21 @@ func (p *Proxy) getBackendURL() string {
 	return cfg.Emby.URL
 }
 
+func (p *Proxy) getSubtitleBackendURL() string {
+	cfg := config.Get()
+	if cfg != nil && strings.TrimSpace(cfg.Backend.FontInAssURL) != "" {
+		return strings.TrimSpace(cfg.Backend.FontInAssURL)
+	}
+	return p.getBackendURL()
+}
+
+func (p *Proxy) getRequestBackendURL(r *http.Request) string {
+	if isSubtitleStreamPath(r) {
+		return p.getSubtitleBackendURL()
+	}
+	return p.getBackendURL()
+}
+
 func (p *Proxy) getBackendServerID(targetURL *url.URL) string {
 	cfg := config.Get()
 	if cfg != nil && cfg.Backend.ServerID != "" {
@@ -139,7 +154,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	globalLimiter := p.limiterManager.GetGlobalLimiter()
 
 	// Create backend request
-	backendURL := p.getBackendURL()
+	backendURL := p.getRequestBackendURL(r)
 	targetURL, err := url.Parse(backendURL)
 	if err != nil {
 		http.Error(w, "Invalid backend URL", http.StatusInternalServerError)
@@ -239,9 +254,9 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	rewriteLocationHeader(w.Header(), p.getBackendURL(), proxyBaseURL(r))
+	rewriteLocationHeader(w.Header(), backendURL, proxyBaseURL(r))
 	if rewrittenBody, rewrittenContentLength, rewritten := rewriteDiscoveryResponse(r, resp, p.getBackendURL()); rewritten {
-		p.maybeWarmSubtitleStreams(r, rewrittenBody, p.getBackendURL())
+		p.maybeWarmSubtitleStreams(r, rewrittenBody, p.getSubtitleBackendURL())
 		w.Header().Set("Content-Length", fmt.Sprintf("%d", rewrittenContentLength))
 		w.WriteHeader(resp.StatusCode)
 		if _, writeErr := w.Write(rewrittenBody); writeErr != nil {
@@ -371,6 +386,7 @@ func rewriteDiscoveryResponse(r *http.Request, resp *http.Response, backendBaseU
 
 var singleItemPathPattern = regexp.MustCompile(`^/(Users/[^/]+/)?Items/[^/]+$`)
 var playbackInfoPathPattern = regexp.MustCompile(`^/Items/([^/]+)/PlaybackInfo$`)
+var subtitleStreamPathPattern = regexp.MustCompile(`^/Videos/[^/]+/[^/]+/Subtitles/[^/]+/Stream(?:\.[^/?]+)?$`)
 
 func shouldRewriteJSONPath(path string) bool {
 	switch {
@@ -757,6 +773,13 @@ func proxyPort(base string) int {
 		}
 	}
 	return 80
+}
+
+func isSubtitleStreamPath(r *http.Request) bool {
+	if r == nil {
+		return false
+	}
+	return subtitleStreamPathPattern.MatchString(r.URL.Path)
 }
 
 func dedupeAnyStrings(values []any) []any {
