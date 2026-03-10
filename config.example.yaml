@@ -12,7 +12,6 @@ emby:
 backend:
   type: "direct"
   lucky_url: ""
-  fontinass_url: ""
   server_id: "emby-main"
 
 rate_limits:

@@ -63,7 +63,6 @@ emby:
 backend:
   type: "direct"  # Lucky 作为前置代理时，这里应保持 direct，让本程序直接转发到 Emby
   lucky_url: "http://localhost:16666"
-  fontinass_url: "http://localhost:8011"  # 可选，仅字幕流会转给 fontInAss
   server_id: "emby-main"
 
 rate_limits:
@@ -74,11 +73,6 @@ rate_limits:
 database:
   path: "./data/config.db"
 ```
-
-说明：
-- `lucky` 放在最外层反向代理时，客户端仍然只访问 Lucky。
-- 本程序默认请求继续走 `emby.url` 或现有后端设置。
-- 只有字幕流路径 `/Videos/.../Subtitles/.../Stream.*` 会在配置了 `backend.fontinass_url` 后转给 fontInAss。
 
 ### 3. 运行
 

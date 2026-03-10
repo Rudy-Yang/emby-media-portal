@@ -12,7 +12,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"emby-media-portal/internal/auth"
@@ -28,8 +27,6 @@ type Proxy struct {
 	rulesManager   *ratelimit.RulesManager
 	statsTracker   *stats.Tracker
 	transport      *http.Transport
-	subtitleWarmMu sync.Mutex
-	subtitleWarmup map[string]time.Time
 }
 
 // NewProxy creates a new proxy instance
@@ -44,7 +41,6 @@ func NewProxy(
 		limiterManager: limiterManager,
 		rulesManager:   rulesManager,
 		statsTracker:   statsTracker,
-		subtitleWarmup: make(map[string]time.Time),
 		transport: &http.Transport{
 			MaxIdleConns:        100,
 			MaxIdleConnsPerHost: 20,
@@ -65,21 +61,6 @@ func (p *Proxy) getBackendURL() string {
 	}
 
 	return cfg.Emby.URL
-}
-
-func (p *Proxy) getSubtitleBackendURL() string {
-	cfg := config.Get()
-	if cfg != nil && strings.TrimSpace(cfg.Backend.FontInAssURL) != "" {
-		return strings.TrimSpace(cfg.Backend.FontInAssURL)
-	}
-	return p.getBackendURL()
-}
-
-func (p *Proxy) getRequestBackendURL(r *http.Request) string {
-	if isSubtitleStreamPath(r) {
-		return p.getSubtitleBackendURL()
-	}
-	return p.getBackendURL()
 }
 
 func (p *Proxy) getBackendServerID(targetURL *url.URL) string {
@@ -154,7 +135,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	globalLimiter := p.limiterManager.GetGlobalLimiter()
 
 	// Create backend request
-	backendURL := p.getRequestBackendURL(r)
+	backendURL := p.getBackendURL()
 	targetURL, err := url.Parse(backendURL)
 	if err != nil {
 		http.Error(w, "Invalid backend URL", http.StatusInternalServerError)
@@ -254,9 +235,8 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	rewriteLocationHeader(w.Header(), backendURL, proxyBaseURL(r))
+	rewriteLocationHeader(w.Header(), p.getBackendURL(), proxyBaseURL(r))
 	if rewrittenBody, rewrittenContentLength, rewritten := rewriteDiscoveryResponse(r, resp, p.getBackendURL()); rewritten {
-		p.maybeWarmSubtitleStreams(r, rewrittenBody, p.getSubtitleBackendURL())
 		w.Header().Set("Content-Length", fmt.Sprintf("%d", rewrittenContentLength))
 		w.WriteHeader(resp.StatusCode)
 		if _, writeErr := w.Write(rewrittenBody); writeErr != nil {
@@ -385,8 +365,6 @@ func rewriteDiscoveryResponse(r *http.Request, resp *http.Response, backendBaseU
 }
 
 var singleItemPathPattern = regexp.MustCompile(`^/(Users/[^/]+/)?Items/[^/]+$`)
-var playbackInfoPathPattern = regexp.MustCompile(`^/Items/([^/]+)/PlaybackInfo$`)
-var subtitleStreamPathPattern = regexp.MustCompile(`^/Videos/[^/]+/[^/]+/Subtitles/[^/]+/Stream(?:\.[^/?]+)?$`)
 
 func shouldRewriteJSONPath(path string) bool {
 	switch {
@@ -452,225 +430,6 @@ func rewriteDiscoveryJSON(path string, body []byte, backendBaseURL, proxyBase st
 	return serialized, changed
 }
 
-func (p *Proxy) maybeWarmSubtitleStreams(r *http.Request, body []byte, backendBaseURL string) {
-	if r == nil || len(body) == 0 || !strings.HasSuffix(r.URL.Path, "/PlaybackInfo") {
-		return
-	}
-
-	urls := subtitleWarmupURLs(r.URL.Path, body, backendBaseURL)
-	if len(urls) == 0 {
-		return
-	}
-
-	headers := cloneWarmupHeaders(r.Header)
-	userAgent := strings.TrimSpace(r.UserAgent())
-	go func() {
-		for _, subtitleURL := range urls {
-			if !p.reserveSubtitleWarmup(subtitleURL) {
-				continue
-			}
-			p.warmSubtitleStream(subtitleURL, headers, userAgent)
-		}
-	}()
-}
-
-func (p *Proxy) reserveSubtitleWarmup(target string) bool {
-	if target == "" {
-		return false
-	}
-
-	now := time.Now()
-	p.subtitleWarmMu.Lock()
-	defer p.subtitleWarmMu.Unlock()
-
-	for key, expiresAt := range p.subtitleWarmup {
-		if now.After(expiresAt) {
-			delete(p.subtitleWarmup, key)
-		}
-	}
-
-	if expiresAt, exists := p.subtitleWarmup[target]; exists && now.Before(expiresAt) {
-		return false
-	}
-
-	p.subtitleWarmup[target] = now.Add(20 * time.Second)
-	return true
-}
-
-func (p *Proxy) warmSubtitleStream(target string, headers http.Header, userAgent string) {
-	req, err := http.NewRequest(http.MethodGet, target, nil)
-	if err != nil {
-		return
-	}
-
-	for key, values := range headers {
-		for _, value := range values {
-			req.Header.Add(key, value)
-		}
-	}
-	if userAgent != "" {
-		req.Header.Set("User-Agent", userAgent)
-	}
-
-	resp, err := p.transport.RoundTrip(req)
-	if err != nil {
-		log.Printf("Subtitle warmup failed for %s: %v", target, err)
-		return
-	}
-	defer resp.Body.Close()
-	_, _ = io.Copy(io.Discard, resp.Body)
-}
-
-func subtitleWarmupURLs(path string, body []byte, backendBaseURL string) []string {
-	itemID := playbackInfoItemID(path)
-	if itemID == "" {
-		return nil
-	}
-
-	var payload map[string]any
-	if err := json.Unmarshal(body, &payload); err != nil {
-		return nil
-	}
-
-	mediaSources, _ := payload["MediaSources"].([]any)
-	if len(mediaSources) == 0 {
-		return nil
-	}
-
-	seen := map[string]struct{}{}
-	urls := make([]string, 0, 2)
-	for _, source := range mediaSources {
-		sourceMap, ok := source.(map[string]any)
-		if !ok {
-			continue
-		}
-		mediaSourceID := stringValue(sourceMap["Id"])
-		mediaStreams, _ := sourceMap["MediaStreams"].([]any)
-		for _, stream := range mediaStreams {
-			streamMap, ok := stream.(map[string]any)
-			if !ok || !boolValue(streamMap["IsExternal"]) || !boolValue(streamMap["IsTextSubtitleStream"]) {
-				continue
-			}
-			target := strings.TrimSpace(stringValue(streamMap["DeliveryUrl"]))
-			if target == "" {
-				index := intValue(streamMap["Index"])
-				if index < 0 || mediaSourceID == "" {
-					continue
-				}
-				target = fmt.Sprintf("/Videos/%s/%s/Subtitles/%d/Stream.%s", itemID, mediaSourceID, index, subtitleFormat(streamMap))
-			}
-			resolved := resolveBackendURL(backendBaseURL, target)
-			if resolved == "" {
-				continue
-			}
-			if _, exists := seen[resolved]; exists {
-				continue
-			}
-			seen[resolved] = struct{}{}
-			urls = append(urls, resolved)
-		}
-	}
-
-	return urls
-}
-
-func cloneWarmupHeaders(source http.Header) http.Header {
-	headers := http.Header{}
-	if source == nil {
-		return headers
-	}
-	for _, key := range []string{
-		"X-Emby-Token",
-		"X-MediaBrowser-Token",
-		"X-Emby-Authorization",
-		"Authorization",
-		"X-Emby-Client",
-		"X-Emby-Client-Version",
-		"X-Emby-Device-Id",
-		"X-Emby-Device-Name",
-		"X-Real-IP",
-		"X-Forwarded-For",
-		"X-Forwarded-Proto",
-		"Cookie",
-	} {
-		for _, value := range source.Values(key) {
-			headers.Add(key, value)
-		}
-	}
-	return headers
-}
-
-func playbackInfoItemID(path string) string {
-	matches := playbackInfoPathPattern.FindStringSubmatch(path)
-	if len(matches) < 2 {
-		return ""
-	}
-	return strings.TrimSpace(matches[1])
-}
-
-func resolveBackendURL(backendBaseURL, target string) string {
-	base, err := url.Parse(backendBaseURL)
-	if err != nil {
-		return ""
-	}
-	ref, err := url.Parse(target)
-	if err != nil {
-		return ""
-	}
-	return base.ResolveReference(ref).String()
-}
-
-func subtitleFormat(stream map[string]any) string {
-	codec := strings.ToLower(strings.TrimSpace(stringValue(stream["Codec"])))
-	switch codec {
-	case "ass", "ssa", "srt", "vtt", "sub", "ttml":
-		return codec
-	default:
-		return "vtt"
-	}
-}
-
-func stringValue(value any) string {
-	if value == nil {
-		return ""
-	}
-	if text, ok := value.(string); ok {
-		return text
-	}
-	return fmt.Sprint(value)
-}
-
-func boolValue(value any) bool {
-	switch v := value.(type) {
-	case bool:
-		return v
-	case string:
-		return strings.EqualFold(strings.TrimSpace(v), "true")
-	case float64:
-		return v != 0
-	default:
-		return false
-	}
-}
-
-func intValue(value any) int {
-	switch v := value.(type) {
-	case int:
-		return v
-	case int32:
-		return int(v)
-	case int64:
-		return int(v)
-	case float64:
-		return int(v)
-	case string:
-		parsed, err := strconv.Atoi(strings.TrimSpace(v))
-		if err == nil {
-			return parsed
-		}
-	}
-	return -1
-}
 
 func shouldRewriteServerDiscovery(path string) bool {
 	switch {
@@ -696,6 +455,9 @@ func sanitizeMediaPaths(value any) bool {
 	case map[string]any:
 		for key, nested := range v {
 			if key == "Path" {
+				if shouldPreserveMediaPath(v) {
+					continue
+				}
 				if pathValue, ok := nested.(string); ok && looksLikeLocalMediaPath(pathValue) {
 					v[key] = ""
 					changed = true
@@ -716,6 +478,18 @@ func sanitizeMediaPaths(value any) bool {
 	return changed
 }
 
+func shouldPreserveMediaPath(value map[string]any) bool {
+	if value == nil {
+		return false
+	}
+	if strings.EqualFold(strings.TrimSpace(stringMapValue(value, "Type")), "Subtitle") &&
+		boolMapValue(value, "IsExternal") &&
+		boolMapValue(value, "IsTextSubtitleStream") {
+		return true
+	}
+	return false
+}
+
 func looksLikeLocalMediaPath(value string) bool {
 	value = strings.TrimSpace(value)
 	if value == "" {
@@ -733,6 +507,36 @@ func looksLikeLocalMediaPath(value string) bool {
 	default:
 		return len(value) > 2 && value[1] == ':' && (value[2] == '\\' || value[2] == '/')
 	}
+}
+
+func stringMapValue(value map[string]any, key string) string {
+	if value == nil {
+		return ""
+	}
+	raw, ok := value[key]
+	if !ok {
+		return ""
+	}
+	text, ok := raw.(string)
+	if !ok {
+		return ""
+	}
+	return text
+}
+
+func boolMapValue(value map[string]any, key string) bool {
+	if value == nil {
+		return false
+	}
+	raw, ok := value[key]
+	if !ok {
+		return false
+	}
+	flag, ok := raw.(bool)
+	if !ok {
+		return false
+	}
+	return flag
 }
 
 func rewriteLocationHeader(header http.Header, backendBaseURL, proxyBase string) {
@@ -773,13 +577,6 @@ func proxyPort(base string) int {
 		}
 	}
 	return 80
-}
-
-func isSubtitleStreamPath(r *http.Request) bool {
-	if r == nil {
-		return false
-	}
-	return subtitleStreamPathPattern.MatchString(r.URL.Path)
 }
 
 func dedupeAnyStrings(values []any) []any {

@@ -1105,7 +1105,7 @@
   </style>
 </head>
 <body>
-  <div id="loginView" class="login wrap">
+  <div id="loginView" class="login wrap hidden">
     <div class="card">
       <h1>emby-media-portal</h1>
       <p class="muted" style="margin-top:8px">分别管理用户限速、客户端限速和流量统计。</p>
@@ -1403,7 +1403,6 @@
         <div class="card">
           <h2>系统设置</h2>
           <div class="field"><label for="embyUrl">Emby 地址</label><input id="embyUrl" placeholder="https://emby.example.com"></div>
-          <div class="field"><label for="fontInAssUrl">fontInAss 地址</label><input id="fontInAssUrl" placeholder="http://fontinass:8011"></div>
           <div class="field"><label for="listenPort">监听端口</label><input id="listenPort" type="number" min="1" max="65535" placeholder="8095"></div>
           <div class="field"><label for="adminPath">管理入口路径</label><input id="adminPath" placeholder="/admin"></div>
           <div class="field"><label for="embyApiKey">Emby API Key</label><input id="embyApiKey" type="password" placeholder="留空则保持当前值"></div>
@@ -2528,7 +2527,6 @@
     async function loadSettings() {
       const settings = await api("/rules/defaults");
       document.getElementById("embyUrl").value = settings.emby_url || "";
-      document.getElementById("fontInAssUrl").value = settings.fontinass_url || "";
       document.getElementById("listenPort").value = settings.listen_port || 8095;
       document.getElementById("adminPath").value = settings.admin_path || "/admin";
       document.getElementById("embyApiKey").value = "";
@@ -2544,7 +2542,6 @@
     async function saveSettings() {
       const payload = {
         emby_url: document.getElementById("embyUrl").value.trim(),
-        fontinass_url: document.getElementById("fontInAssUrl").value.trim(),
         listen_port: Number(document.getElementById("listenPort").value) || 8095,
         admin_path: document.getElementById("adminPath").value.trim(),
         emby_api_key: document.getElementById("embyApiKey").value.trim(),
@@ -2677,9 +2674,11 @@
       .then((status) => {
         if (status.authenticated) {
           bootstrapWithSession(status.username || savedUsername);
+          return;
         }
+        setAuthenticatedState(false);
       })
-      .catch(() => null);
+      .catch(() => setAuthenticatedState(false));
 
     ["usernameInput", "passwordInput"].forEach((id) => {
       document.getElementById(id).addEventListener("keydown", (event) => {
