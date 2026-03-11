@@ -270,6 +270,140 @@
       margin: 14px 0 18px;
     }
 
+    .traffic-scope-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .traffic-layout {
+      display: grid;
+      grid-template-columns: minmax(320px, 360px) minmax(0, 1fr);
+      gap: 16px;
+      margin-top: 16px;
+      align-items: start;
+    }
+
+    .traffic-main-stack {
+      min-width: 0;
+    }
+
+    .traffic-geo-panel {
+      display: grid;
+      gap: 14px;
+      padding: 16px;
+      border-radius: 18px;
+      border: 1px solid rgba(146, 180, 255, 0.14);
+      background:
+        linear-gradient(180deg, rgba(15, 29, 53, 0.92), rgba(8, 19, 39, 0.92)),
+        radial-gradient(circle at top right, rgba(42, 124, 255, 0.18), transparent 38%);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+
+    .traffic-geo-head {
+      display: grid;
+      gap: 10px;
+    }
+
+    .traffic-geo-head-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .traffic-geo-head h3,
+    .traffic-geo-detail h4 {
+      margin: 0;
+    }
+
+    .traffic-geo-map {
+      min-height: 340px;
+      border-radius: 16px;
+      border: 1px solid rgba(135, 170, 255, 0.12);
+      background:
+        radial-gradient(circle at 18% 18%, rgba(56, 121, 255, 0.16), transparent 26%),
+        linear-gradient(180deg, rgba(10, 20, 38, 0.94), rgba(6, 14, 28, 0.96));
+      overflow: hidden;
+    }
+
+    .traffic-geo-summary {
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .traffic-geo-detail {
+      display: grid;
+      gap: 10px;
+      min-height: 180px;
+    }
+
+    .traffic-geo-users {
+      display: grid;
+      gap: 8px;
+      max-height: 320px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .traffic-geo-user {
+      display: grid;
+      gap: 6px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(154, 183, 255, 0.08);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .traffic-geo-user-head,
+    .traffic-geo-user-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .traffic-geo-user-head strong {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .traffic-geo-user-rank {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 24px;
+      height: 24px;
+      padding: 0 7px;
+      border-radius: 999px;
+      background: rgba(33, 150, 255, 0.16);
+      border: 1px solid rgba(84, 167, 255, 0.26);
+      color: #c9e4ff;
+      font-size: 12px;
+      font-weight: 700;
+      flex: 0 0 auto;
+    }
+
+    .traffic-geo-user-meta {
+      font-size: 12px;
+      color: #95aad0;
+      flex-wrap: wrap;
+    }
+
+    .traffic-geo-empty {
+      display: grid;
+      place-items: center;
+      min-height: 180px;
+      color: var(--muted);
+      text-align: center;
+      padding: 18px;
+    }
+
     #traffic .two {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -1171,6 +1305,8 @@
       .two { grid-template-columns: 1fr; }
       .chart-grid { grid-template-columns: 1fr; }
       .overview-stats-grid { grid-template-columns: 1fr 1fr; }
+      .traffic-layout { grid-template-columns: 1fr; }
+      .traffic-geo-map { min-height: 300px; }
     }
   </style>
 </head>
@@ -1386,95 +1522,120 @@
             <button class="btn" onclick="loadTraffic()">刷新统计</button>
           </div>
         </div>
-        <div id="trafficSummaryPane" class="traffic-pane active">
-          <div class="chart-grid">
-            <div class="chart-card">
-              <div class="chart-card-head">
-                <h3>用户出站占比</h3>
-                <select id="trafficUserChartTopN" class="chart-top-select" onchange="setChartTopN('user', this.value)">
-                  <option value="3">前 3 项</option>
-                  <option value="5">前 5 项</option>
-                  <option value="8" selected>前 8 项</option>
-                  <option value="10">前 10 项</option>
-                </select>
-              </div>
-              <div id="trafficUserChart"></div>
-            </div>
-            <div class="chart-card">
-              <div class="chart-card-head">
-                <h3>客户端出站占比</h3>
-                <select id="trafficClientChartTopN" class="chart-top-select" onchange="setChartTopN('client', this.value)">
-                  <option value="3">前 3 项</option>
-                  <option value="5">前 5 项</option>
-                  <option value="8" selected>前 8 项</option>
-                  <option value="10">前 10 项</option>
-                </select>
-              </div>
-              <div id="trafficClientChart"></div>
-            </div>
-          </div>
-          <div class="two">
-            <div>
-              <h3>按用户</h3>
-              <table>
-                <thead><tr>
-                  <th><button class="sort-btn" data-sort-table="trafficUsers" data-sort-key="user_name" onclick="toggleTableSort('trafficUsers','user_name')">用户</button></th>
-                  <th><button class="sort-btn" data-sort-table="trafficUsers" data-sort-key="total_bytes_in" onclick="toggleTableSort('trafficUsers','total_bytes_in')">入站</button></th>
-                  <th><button class="sort-btn" data-sort-table="trafficUsers" data-sort-key="total_bytes_out" onclick="toggleTableSort('trafficUsers','total_bytes_out')">出站</button></th>
-                  <th><button class="sort-btn" data-sort-table="trafficUsers" data-sort-key="request_count" onclick="toggleTableSort('trafficUsers','request_count')">请求数</button></th>
-                </tr></thead>
-                <tbody id="trafficUsers"></tbody>
-              </table>
-            </div>
-            <div>
-              <h3>按客户端</h3>
-              <table>
-                <thead><tr>
-                  <th><button class="sort-btn" data-sort-table="trafficClients" data-sort-key="client_name" onclick="toggleTableSort('trafficClients','client_name')">客户端</button></th>
-                  <th><button class="sort-btn" data-sort-table="trafficClients" data-sort-key="device_name" onclick="toggleTableSort('trafficClients','device_name')">设备</button></th>
-                  <th><button class="sort-btn" data-sort-table="trafficClients" data-sort-key="total_bytes_in" onclick="toggleTableSort('trafficClients','total_bytes_in')">入站</button></th>
-                  <th><button class="sort-btn" data-sort-table="trafficClients" data-sort-key="total_bytes_out" onclick="toggleTableSort('trafficClients','total_bytes_out')">出站</button></th>
-                  <th><button class="sort-btn" data-sort-table="trafficClients" data-sort-key="request_count" onclick="toggleTableSort('trafficClients','request_count')">请求数</button></th>
-                </tr></thead>
-                <tbody id="trafficClients"></tbody>
-              </table>
-            </div>
+        <div class="traffic-scope-row">
+          <span class="muted">区域地图范围</span>
+          <div id="trafficGeoScopeSegment" class="subnav">
+            <button class="active" data-geo-scope="china" onclick="setTrafficGeoScope('china')">中国</button>
+            <button data-geo-scope="world" onclick="setTrafficGeoScope('world')">全球</button>
           </div>
         </div>
-        <div id="trafficRecordsPane" class="traffic-pane">
-          <div class="traffic-records-toolbar">
-            <div class="traffic-records-search">
-              <input id="trafficRecordsSearch" placeholder="搜索用户、客户端、设备、路径、流量类型..." onkeydown="handleTrafficRecordsSearchKeydown(event)">
-              <button class="btn" onclick="applyTrafficRecordsSearch()">搜索</button>
-              <button class="btn" onclick="applyTrafficRecordsSearch('未知用户')">未知用户</button>
-              <button class="btn" onclick="clearTrafficRecordsSearch()">清空</button>
+        <div class="traffic-layout">
+          <div class="traffic-geo-panel">
+            <div class="traffic-geo-head">
+              <div>
+                <h3>区域地图</h3>
+                <p class="muted">按客户端 IP 聚合区域流量。中国地图精确到省，全球地图按国家汇总中国流量。</p>
+              </div>
             </div>
-            <div class="traffic-records-controls">
-              <label for="trafficRecordsPageSize">每页条数
-                <select id="trafficRecordsPageSize" onchange="setTrafficRecordsPageSize(this.value)">
-                  <option value="20">20</option>
-                  <option value="50" selected>50</option>
-                  <option value="100">100</option>
-                </select>
-              </label>
-              <div class="traffic-records-pagination">
-                <button id="trafficRecordsPrev" class="btn" onclick="changeTrafficRecordsPage(-1)">上一页</button>
-                <span id="trafficRecordsPageInfo">第 1 / 1 页</span>
-                <button id="trafficRecordsNext" class="btn" onclick="changeTrafficRecordsPage(1)">下一页</button>
-              </div>
-              <div class="traffic-records-bulk">
-                <span id="trafficRecordsSelectionInfo" class="muted">已选 0 条</span>
-                <button id="trafficRecordsDeleteSelected" class="btn danger" onclick="deleteSelectedTrafficRecords()" disabled>删除已选</button>
-                <button id="trafficRecordsDeleteFiltered" class="btn danger" onclick="deleteFilteredTrafficRecords()" disabled>删除搜索结果</button>
-              </div>
-              <button class="btn danger" onclick="resetTrafficDatabase()">清空数据库</button>
+            <div id="trafficGeoMap" class="traffic-geo-map"><div class="traffic-geo-empty">地图加载中...</div></div>
+            <div id="trafficGeoSummary" class="traffic-geo-summary muted">正在加载区域流量数据...</div>
+            <div class="traffic-geo-detail">
+              <h4 id="trafficGeoDetailTitle">区域用户</h4>
+              <div id="trafficGeoDetailBody" class="traffic-geo-users"></div>
             </div>
           </div>
-          <div id="trafficRecordsFilterSummary" class="traffic-records-filter-summary hidden"></div>
-          <table class="record-table">
-            <thead><tr><th><input id="trafficRecordsSelectAll" class="record-check" type="checkbox" onchange="toggleTrafficRecordsPageSelection(this.checked)"></th><th>时间</th><th>名称</th><th>类型</th><th>客户端</th><th>设备</th><th>路径</th><th>入站</th><th>出站</th><th>操作</th></tr></thead>
-            <tbody id="trafficRecords"></tbody>
-          </table>
+          <div class="traffic-main-stack">
+            <div id="trafficSummaryPane" class="traffic-pane active">
+              <div class="chart-grid">
+                <div class="chart-card">
+                  <div class="chart-card-head">
+                    <h3>用户出站占比</h3>
+                    <select id="trafficUserChartTopN" class="chart-top-select" onchange="setChartTopN('user', this.value)">
+                      <option value="3">前 3 项</option>
+                      <option value="5">前 5 项</option>
+                      <option value="8" selected>前 8 项</option>
+                      <option value="10">前 10 项</option>
+                    </select>
+                  </div>
+                  <div id="trafficUserChart"></div>
+                </div>
+                <div class="chart-card">
+                  <div class="chart-card-head">
+                    <h3>客户端出站占比</h3>
+                    <select id="trafficClientChartTopN" class="chart-top-select" onchange="setChartTopN('client', this.value)">
+                      <option value="3">前 3 项</option>
+                      <option value="5">前 5 项</option>
+                      <option value="8" selected>前 8 项</option>
+                      <option value="10">前 10 项</option>
+                    </select>
+                  </div>
+                  <div id="trafficClientChart"></div>
+                </div>
+              </div>
+              <div class="two">
+                <div>
+                  <h3>按用户</h3>
+                  <table>
+                    <thead><tr>
+                      <th><button class="sort-btn" data-sort-table="trafficUsers" data-sort-key="user_name" onclick="toggleTableSort('trafficUsers','user_name')">用户</button></th>
+                      <th><button class="sort-btn" data-sort-table="trafficUsers" data-sort-key="total_bytes_in" onclick="toggleTableSort('trafficUsers','total_bytes_in')">入站</button></th>
+                      <th><button class="sort-btn" data-sort-table="trafficUsers" data-sort-key="total_bytes_out" onclick="toggleTableSort('trafficUsers','total_bytes_out')">出站</button></th>
+                      <th><button class="sort-btn" data-sort-table="trafficUsers" data-sort-key="request_count" onclick="toggleTableSort('trafficUsers','request_count')">请求数</button></th>
+                    </tr></thead>
+                    <tbody id="trafficUsers"></tbody>
+                  </table>
+                </div>
+                <div>
+                  <h3>按客户端</h3>
+                  <table>
+                    <thead><tr>
+                      <th><button class="sort-btn" data-sort-table="trafficClients" data-sort-key="client_name" onclick="toggleTableSort('trafficClients','client_name')">客户端</button></th>
+                      <th><button class="sort-btn" data-sort-table="trafficClients" data-sort-key="device_name" onclick="toggleTableSort('trafficClients','device_name')">设备</button></th>
+                      <th><button class="sort-btn" data-sort-table="trafficClients" data-sort-key="total_bytes_in" onclick="toggleTableSort('trafficClients','total_bytes_in')">入站</button></th>
+                      <th><button class="sort-btn" data-sort-table="trafficClients" data-sort-key="total_bytes_out" onclick="toggleTableSort('trafficClients','total_bytes_out')">出站</button></th>
+                      <th><button class="sort-btn" data-sort-table="trafficClients" data-sort-key="request_count" onclick="toggleTableSort('trafficClients','request_count')">请求数</button></th>
+                    </tr></thead>
+                    <tbody id="trafficClients"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+            <div id="trafficRecordsPane" class="traffic-pane">
+              <div class="traffic-records-toolbar">
+                <div class="traffic-records-search">
+                  <input id="trafficRecordsSearch" placeholder="搜索用户、客户端、设备、IP、路径、流量类型..." onkeydown="handleTrafficRecordsSearchKeydown(event)">
+                  <button class="btn" onclick="applyTrafficRecordsSearch()">搜索</button>
+                  <button class="btn" onclick="applyTrafficRecordsSearch('未知用户')">未知用户</button>
+                  <button class="btn" onclick="clearTrafficRecordsSearch()">清空</button>
+                </div>
+                <div class="traffic-records-controls">
+                  <label for="trafficRecordsPageSize">每页条数
+                    <select id="trafficRecordsPageSize" onchange="setTrafficRecordsPageSize(this.value)">
+                      <option value="20">20</option>
+                      <option value="50" selected>50</option>
+                      <option value="100">100</option>
+                    </select>
+                  </label>
+                  <div class="traffic-records-pagination">
+                    <button id="trafficRecordsPrev" class="btn" onclick="changeTrafficRecordsPage(-1)">上一页</button>
+                    <span id="trafficRecordsPageInfo">第 1 / 1 页</span>
+                    <button id="trafficRecordsNext" class="btn" onclick="changeTrafficRecordsPage(1)">下一页</button>
+                  </div>
+                  <div class="traffic-records-bulk">
+                    <span id="trafficRecordsSelectionInfo" class="muted">已选 0 条</span>
+                    <button id="trafficRecordsDeleteSelected" class="btn danger" onclick="deleteSelectedTrafficRecords()" disabled>删除已选</button>
+                    <button id="trafficRecordsDeleteFiltered" class="btn danger" onclick="deleteFilteredTrafficRecords()" disabled>删除搜索结果</button>
+                  </div>
+                  <button class="btn danger" onclick="resetTrafficDatabase()">清空数据库</button>
+                </div>
+              </div>
+              <div id="trafficRecordsFilterSummary" class="traffic-records-filter-summary hidden"></div>
+              <table class="record-table">
+                <thead><tr><th><input id="trafficRecordsSelectAll" class="record-check" type="checkbox" onchange="toggleTrafficRecordsPageSelection(this.checked)"></th><th>时间</th><th>名称</th><th>类型</th><th>客户端</th><th>设备</th><th>路径</th><th>入站</th><th>出站</th><th>操作</th></tr></thead>
+                <tbody id="trafficRecords"></tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -1508,20 +1669,29 @@
 
   <div id="toast" class="toast"></div>
 
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
   <script>
     let editingUserId = "";
     let editingClientId = "";
     let isRefreshing = false;
     let pendingRefresh = false;
     let currentTrafficRange = localStorage.getItem("emby_mp_traffic_range") || "day";
-    let currentTrafficView = localStorage.getItem("emby_mp_traffic_view") || "summary";
+    let currentTrafficView = localStorage.getItem("emby_mp_traffic_view") === "records" ? "records" : "summary";
     let trafficUserChartTopN = Number(localStorage.getItem("emby_mp_chart_topn_user") || "8");
     let trafficClientChartTopN = Number(localStorage.getItem("emby_mp_chart_topn_client") || "8");
     let trafficRecordsPage = Number(localStorage.getItem("emby_mp_records_page") || "1");
     let trafficRecordsPageSize = Number(localStorage.getItem("emby_mp_records_page_size") || "50");
     let trafficRecordsSearch = localStorage.getItem("emby_mp_records_search") || "";
+    let trafficGeoScope = localStorage.getItem("emby_mp_geo_scope") || "china";
     let trafficRecordSelection = new Set();
     let trafficRecordsCurrentItems = [];
+    let trafficGeoChart = null;
+    let trafficGeoRegions = [];
+    let trafficGeoHoveredKey = "";
+    let trafficGeoSelectedKey = "";
+    let trafficGeoLoadToken = 0;
+    let trafficGeoResizeBound = false;
+    const trafficGeoJSONCache = new Map();
     let cachedUsers = [];
     let cachedObservedClients = [];
     let cachedClientRules = [];
@@ -1743,13 +1913,13 @@
     }
 
     function setTrafficView(view) {
-      currentTrafficView = view;
-      localStorage.setItem("emby_mp_traffic_view", view);
+      currentTrafficView = view === "records" ? "records" : "summary";
+      localStorage.setItem("emby_mp_traffic_view", currentTrafficView);
       document.querySelectorAll("#trafficViewSegment button").forEach((button) => {
-        button.classList.toggle("active", button.dataset.view === view);
+        button.classList.toggle("active", button.dataset.view === currentTrafficView);
       });
-      document.getElementById("trafficSummaryPane").classList.toggle("active", view === "summary");
-      document.getElementById("trafficRecordsPane").classList.toggle("active", view === "records");
+      document.getElementById("trafficSummaryPane").classList.toggle("active", currentTrafficView === "summary");
+      document.getElementById("trafficRecordsPane").classList.toggle("active", currentTrafficView === "records");
       loadTraffic({ showLoading: false, preserveScroll: true });
     }
 
@@ -1848,6 +2018,248 @@
         <span class="muted">匹配 ${Number(total) || 0} 条记录，可直接判断并删除未知用户等异常数据。</span>
         <button class="btn" onclick="clearTrafficRecordsSearch()">清除筛选</button>
       `;
+    }
+
+    function setTrafficGeoScope(scope) {
+      const nextScope = scope === "world" ? "world" : "china";
+      if (trafficGeoScope === nextScope) return;
+      trafficGeoScope = nextScope;
+      trafficGeoSelectedKey = "";
+      trafficGeoHoveredKey = "";
+      localStorage.setItem("emby_mp_geo_scope", nextScope);
+      updateTrafficGeoScopeUI();
+      renderTrafficGeoLoading("地图切换中...");
+      loadTraffic({ showLoading: false, preserveScroll: true });
+    }
+
+    function updateTrafficGeoScopeUI() {
+      document.querySelectorAll("#trafficGeoScopeSegment button").forEach((button) => {
+        button.classList.toggle("active", button.dataset.geoScope === trafficGeoScope);
+      });
+    }
+
+    function renderTrafficGeoLoading(message = "地图加载中...") {
+      const map = document.getElementById("trafficGeoMap");
+      const summary = document.getElementById("trafficGeoSummary");
+      const title = document.getElementById("trafficGeoDetailTitle");
+      const detail = document.getElementById("trafficGeoDetailBody");
+      if (map) map.innerHTML = `<div class="traffic-geo-empty">${safe(message)}</div>`;
+      if (summary) summary.textContent = message;
+      if (title) title.textContent = "区域用户";
+      if (detail) detail.innerHTML = `<div class="traffic-geo-empty">${safe(message)}</div>`;
+      if (trafficGeoChart) {
+        trafficGeoChart.dispose();
+        trafficGeoChart = null;
+      }
+    }
+
+    function activeTrafficGeoRegion() {
+      const key = trafficGeoHoveredKey || trafficGeoSelectedKey;
+      if (!key) return trafficGeoRegions[0] || null;
+      return trafficGeoRegions.find((item) => item.key === key) || trafficGeoRegions[0] || null;
+    }
+
+    function renderTrafficGeoDetail(region = null) {
+      const title = document.getElementById("trafficGeoDetailTitle");
+      const detail = document.getElementById("trafficGeoDetailBody");
+      if (!title || !detail) return;
+
+      if (!region) {
+        title.textContent = "区域用户";
+        detail.innerHTML = `<div class="traffic-geo-empty">当前时间范围内没有可映射的公网 IP 数据。</div>`;
+        return;
+      }
+
+      title.textContent = `${region.display_name} 用户`;
+      if (!region.users || !region.users.length) {
+        detail.innerHTML = `<div class="traffic-geo-empty">这个区域暂无用户流量记录。</div>`;
+        return;
+      }
+
+      detail.innerHTML = region.users.map((item, index) => `
+        <article class="traffic-geo-user">
+          <div class="traffic-geo-user-head">
+            <div class="row" style="gap:8px; min-width:0">
+              <span class="traffic-geo-user-rank">${index + 1}</span>
+              <strong title="${safe(item.user_name || item.user_id || "未知用户")}">${safe(item.user_name || item.user_id || "未知用户")}</strong>
+            </div>
+            <span>${formatBytes(item.total_bytes_out)}</span>
+          </div>
+          <div class="traffic-geo-user-meta">
+            <span>入站 ${formatBytes(item.total_bytes_in)}</span>
+            <span>出站 ${formatBytes(item.total_bytes_out)}</span>
+            <span>${item.request_count || 0} 次请求</span>
+          </div>
+        </article>
+      `).join("");
+    }
+
+    async function ensureTrafficGeoMap(scope) {
+      const mapName = scope === "world" ? "traffic-world" : "traffic-china";
+      if (!window.echarts) {
+        throw new Error("ECharts 未加载");
+      }
+      if (trafficGeoJSONCache.has(scope)) return mapName;
+
+      const response = await fetch(`/api/traffic/map-geojson?scope=${scope}`, {
+        credentials: "same-origin"
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || `HTTP ${response.status}`);
+      }
+      const geoJSON = await response.json();
+      window.echarts.registerMap(mapName, geoJSON);
+      trafficGeoJSONCache.set(scope, true);
+      return mapName;
+    }
+
+    function getTrafficGeoChart() {
+      if (!window.echarts) return null;
+      const container = document.getElementById("trafficGeoMap");
+      if (!container) return null;
+      if (!trafficGeoChart) {
+        container.innerHTML = "";
+        trafficGeoChart = window.echarts.init(container);
+        if (!trafficGeoResizeBound) {
+          window.addEventListener("resize", () => trafficGeoChart && trafficGeoChart.resize(), { passive: true });
+          trafficGeoResizeBound = true;
+        }
+        trafficGeoChart.on("mouseover", (params) => {
+          const region = trafficGeoRegions.find((item) => item.map_name === params.name);
+          if (!region) return;
+          trafficGeoHoveredKey = region.key;
+          renderTrafficGeoDetail(region);
+        });
+        trafficGeoChart.on("mouseout", () => {
+          trafficGeoHoveredKey = "";
+          renderTrafficGeoDetail(activeTrafficGeoRegion());
+        });
+        trafficGeoChart.on("click", (params) => {
+          const region = trafficGeoRegions.find((item) => item.map_name === params.name);
+          if (!region) return;
+          trafficGeoSelectedKey = region.key;
+          renderTrafficGeoDetail(region);
+        });
+      }
+      return trafficGeoChart;
+    }
+
+    function regionTooltip(region) {
+      if (!region) return "";
+      const users = (region.users || []).slice(0, 5).map((item, index) =>
+        `${index + 1}. ${item.user_name || item.user_id || "未知用户"} ${formatBytes(item.total_bytes_out)}`
+      ).join("<br>");
+      return `
+        <div style="display:grid;gap:6px;min-width:180px">
+          <strong>${safe(region.display_name)}</strong>
+          <span>出站 ${safe(formatBytes(region.total_bytes_out))}</span>
+          <span>入站 ${safe(formatBytes(region.total_bytes_in))}</span>
+          <span>${Number(region.request_count) || 0} 次请求</span>
+          ${users ? `<div style="color:#b9cbef">${users}</div>` : ""}
+        </div>
+      `;
+    }
+
+    function renderTrafficGeoMap(scope, regions) {
+      const chart = getTrafficGeoChart();
+      if (!chart) {
+        renderTrafficGeoLoading("地图组件未加载");
+        return;
+      }
+
+      const seriesData = (regions || []).filter((item) => item.map_name).map((item) => ({
+        name: item.map_name,
+        value: Number(item.total_bytes_out) || 0
+      }));
+      const maxValue = Math.max(0, ...seriesData.map((item) => item.value));
+      const mapName = scope === "world" ? "traffic-world" : "traffic-china";
+
+      chart.setOption({
+        backgroundColor: "transparent",
+        tooltip: {
+          trigger: "item",
+          backgroundColor: "rgba(8, 12, 20, 0.92)",
+          borderColor: "rgba(99, 148, 255, 0.24)",
+          textStyle: { color: "#eef4ff" },
+          formatter(params) {
+            const region = trafficGeoRegions.find((item) => item.map_name === params.name);
+            return region ? regionTooltip(region) : `${safe(params.name)}<br>暂无流量`;
+          }
+        },
+        visualMap: {
+          min: 0,
+          max: maxValue || 1,
+          calculable: false,
+          orient: "horizontal",
+          left: "center",
+          bottom: 8,
+          textStyle: { color: "#9eb0d2" },
+          inRange: {
+            color: ["#183253", "#235ea6", "#2e89ff", "#87d4ff"]
+          }
+        },
+        series: [{
+          type: "map",
+          map: mapName,
+          roam: true,
+          zoom: scope === "china" ? 1.12 : 1,
+          emphasis: {
+            label: { show: false },
+            itemStyle: {
+              areaColor: "#8dd8ff",
+              borderColor: "#d9f5ff"
+            }
+          },
+          itemStyle: {
+            borderColor: "rgba(206, 229, 255, 0.28)",
+            borderWidth: 1,
+            areaColor: "rgba(43, 76, 115, 0.5)"
+          },
+          data: seriesData
+        }]
+      }, true);
+    }
+
+    async function loadTrafficGeoData() {
+      const token = ++trafficGeoLoadToken;
+      updateTrafficGeoScopeUI();
+
+      try {
+        const [_, payload] = await Promise.all([
+          ensureTrafficGeoMap(trafficGeoScope),
+          api(`/traffic/regions?since=${currentTrafficRange}&scope=${trafficGeoScope}`)
+        ]);
+        if (token !== trafficGeoLoadToken) return;
+
+        trafficGeoRegions = payload.regions || [];
+        if (!trafficGeoRegions.length) {
+          trafficGeoSelectedKey = "";
+          trafficGeoHoveredKey = "";
+          renderTrafficGeoLoading("当前时间范围内没有可用的地图流量数据");
+          return;
+        }
+
+        if (!trafficGeoSelectedKey || !trafficGeoRegions.some((item) => item.key === trafficGeoSelectedKey)) {
+          trafficGeoSelectedKey = trafficGeoRegions[0]?.key || "";
+        }
+        trafficGeoHoveredKey = "";
+
+        const summary = document.getElementById("trafficGeoSummary");
+        if (summary) {
+          const totalOut = trafficGeoRegions.reduce((sum, item) => sum + (Number(item.total_bytes_out) || 0), 0);
+          summary.textContent = `${trafficGeoScope === "china" ? "中国省级" : "全球国家"}区域共 ${trafficGeoRegions.length} 个，累计出站 ${formatBytes(totalOut)}。将鼠标悬停到地图区域可查看该区域内的用户，按流量从高到低排序。`;
+        }
+
+        renderTrafficGeoMap(trafficGeoScope, trafficGeoRegions);
+        renderTrafficGeoDetail(activeTrafficGeoRegion());
+      } catch (error) {
+        if (token !== trafficGeoLoadToken) return;
+        trafficGeoRegions = [];
+        trafficGeoSelectedKey = "";
+        trafficGeoHoveredKey = "";
+        renderTrafficGeoLoading(`地图加载失败：${error.message || error}`);
+      }
     }
 
     function toggleTrafficRecordSelection(id, checked) {
@@ -2638,6 +3050,13 @@
         recordsSearchInput.value = trafficRecordsSearch;
       }
 
+      const geoPromise = (async () => {
+        if (showLoading && !trafficGeoRegions.length) {
+          renderTrafficGeoLoading("地图加载中...");
+        }
+        await loadTrafficGeoData();
+      })();
+
       if (currentTrafficView === "records") {
         const params = new URLSearchParams({
           since: currentTrafficRange,
@@ -2670,6 +3089,7 @@
         10, "暂无数据库记录");
         updateTrafficRecordSelectionUI(recordsResponse.total);
         updateTrafficRecordsFilterSummary(recordsResponse.total);
+        await geoPromise;
         restoreScrollPosition(scrollTop);
         return;
       }
@@ -2687,7 +3107,8 @@
       const activeUsersPromise = api("/users/active").catch(() => null);
       const [users, clients] = await Promise.all([
         api(`/traffic/users?since=${currentTrafficRange}`),
-        api(`/traffic/clients?since=${currentTrafficRange}`)
+        api(`/traffic/clients?since=${currentTrafficRange}`),
+        geoPromise
       ]);
 
       if (token !== trafficLoadToken) return;
@@ -2908,6 +3329,7 @@
     document.getElementById("trafficRecordsPane").classList.toggle("active", currentTrafficView === "records");
     const trafficRecordsSearchInput = document.getElementById("trafficRecordsSearch");
     if (trafficRecordsSearchInput) trafficRecordsSearchInput.value = trafficRecordsSearch;
+    updateTrafficGeoScopeUI();
     updateTrafficRecordSelectionUI();
     updateTrafficRecordsFilterSummary();
     fetch("/api/auth/status", { credentials: "same-origin" })

@@ -6,7 +6,9 @@ Emby 媒体服务器流量控制中间件，提供用户级限速、客户端限
 - **客户端限速**: 按 User-Agent 识别客户端并应用统一限速规则
 - **服务端限速**: 控制后端服务器的总带宽分配
 - **Web 管理面板**: 直观的界面配置所有规则
-- **流量统计**: 记录并展示用户流量使用情况
+- **流量统计**: 记录并展示用户、客户端和数据库明细流量
+- **数据库记录搜索与批量删除**: 可快速筛选并清理未知用户、异常客户端或指定路径数据
+- **区域流量地图**: 基于客户端 IP 在管理面板左侧展示中国省级 / 全球国家级流量热度，并在悬停时显示该区域用户列表
 
 ## 系统架构
 
@@ -119,10 +121,28 @@ Authorization: your-admin-token
 
 | 方法 | 路径 | 描述 |
 |------|------|------|
+| GET | /api/traffic/summary | 获取整体流量汇总 |
 | GET | /api/traffic/users | 获取所有用户流量统计 |
 | GET | /api/traffic/users/:id | 获取指定用户流量统计 |
+| GET | /api/traffic/clients | 获取所有客户端流量统计 |
+| GET | /api/traffic/clients/:id | 获取指定客户端流量统计 |
+| GET | /api/traffic/records | 获取数据库流量记录，支持分页和搜索 |
+| DELETE | /api/traffic/records | 批量删除指定记录或按搜索条件删除 |
+| DELETE | /api/traffic/records/:id | 删除单条数据库记录 |
+| GET | /api/traffic/regions | 获取地图区域聚合流量，`scope=china|world` |
+| GET | /api/traffic/map-geojson | 获取地图 GeoJSON，`scope=china|world` |
 | GET | /api/traffic/servers/:id | 获取指定服务器流量统计 |
 | DELETE | /api/traffic/clean | 清理旧统计数据 |
+
+## 流量地图说明
+
+- 管理面板的“流量统计”页左侧新增了区域地图面板，默认显示中国地图，可切换为全球地图。
+- 中国地图按省级行政区聚合流量；全球地图按国家聚合流量，其中中国用户会汇总为“中国”，不再细分到省。
+- 鼠标悬停地图区域时，会显示该区域内用户列表，并按出站流量从高到低排序。
+- 地图聚合依赖客户端公网 IP。部署在 Lucky、Nginx、Cloudflare 或其他前置代理之后时，请确保请求头里能正确保留 `X-Forwarded-For`。
+- 旧版程序写入的历史记录没有 `client_ip` 字段，升级后这些旧数据不会自动出现在地图里；地图只会随着新流量逐步补全。
+- 局域网、保留地址、回环地址不会映射到中国省份或全球国家区域，因此不会在地图上点亮。
+- 地理定位依赖外部服务 `ipwho.is`，底图依赖在线 GeoJSON 源和前端 ECharts CDN。运行环境如果无法访问外网，地图功能会加载失败，但限速和基础统计不受影响。
 
 ## 限速单位说明
 
@@ -142,6 +162,8 @@ Client → Lucky (:16666) → Emby-FC (:8095) → Emby (:8096)
 ```
 
 Lucky 作为入口反向代理，把请求转发给 Emby-FC；Emby-FC 在应用限速和统计后，再转发到 Emby。
+
+如果你要使用区域地图功能，Lucky 或其他前置代理必须继续透传真实客户端 IP，至少保留 `X-Forwarded-For`。
 
 ## 部署方式
 
@@ -241,6 +263,7 @@ systemctl start emby-media-portal
 - **Go 1.21+**
 - **Gin** - HTTP 框架
 - **SQLite** - 数据存储
+- **Apache ECharts** - 地图与统计可视化
 - **golang.org/x/time/rate** - Token Bucket 限速算法
 
 ## 许可证

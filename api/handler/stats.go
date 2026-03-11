@@ -27,6 +27,7 @@ type StatsResponse struct {
 	ClientName    string `json:"client_name,omitempty"`
 	DeviceID      string `json:"device_id,omitempty"`
 	DeviceName    string `json:"device_name,omitempty"`
+	ClientIP      string `json:"client_ip,omitempty"`
 	ServerID      string `json:"server_id,omitempty"`
 	RequestPath   string `json:"request_path,omitempty"`
 	TrafficKind   string `json:"traffic_kind,omitempty"`
@@ -41,6 +42,27 @@ type TrafficEntriesResponse struct {
 	Total    int64           `json:"total"`
 	Page     int             `json:"page"`
 	PageSize int             `json:"page_size"`
+}
+
+type TrafficRegionResponse struct {
+	Key           string                    `json:"key"`
+	MapName       string                    `json:"map_name"`
+	DisplayName   string                    `json:"display_name"`
+	CountryCode   string                    `json:"country_code"`
+	CountryName   string                    `json:"country_name"`
+	RegionName    string                    `json:"region_name"`
+	TotalBytesIn  int64                     `json:"total_bytes_in"`
+	TotalBytesOut int64                     `json:"total_bytes_out"`
+	RequestCount  int64                     `json:"request_count"`
+	Users         []TrafficRegionUserStatus `json:"users"`
+}
+
+type TrafficRegionUserStatus struct {
+	UserID        string `json:"user_id"`
+	UserName      string `json:"user_name"`
+	TotalBytesIn  int64  `json:"total_bytes_in"`
+	TotalBytesOut int64  `json:"total_bytes_out"`
+	RequestCount  int64  `json:"request_count"`
 }
 
 type DeleteTrafficEntriesRequest struct {
@@ -233,6 +255,7 @@ func (h *StatsHandler) ListTrafficEntries(c *gin.Context) {
 			ClientName:    entry.ClientName,
 			DeviceID:      entry.DeviceID,
 			DeviceName:    entry.DeviceName,
+			ClientIP:      entry.ClientIP,
 			ServerID:      entry.ServerID,
 			RequestPath:   entry.RequestPath,
 			TrafficKind:   entry.TrafficKind,
@@ -249,6 +272,58 @@ func (h *StatsHandler) ListTrafficEntries(c *gin.Context) {
 		Page:     entries.Page,
 		PageSize: entries.PageSize,
 	})
+}
+
+func (h *StatsHandler) GetTrafficRegions(c *gin.Context) {
+	since := parseTimeRange(c.Query("since"))
+	scope := stats.NormalizeGeoScope(c.Query("scope"))
+
+	regions, err := stats.GetTrafficRegions(since, scope)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	response := make([]TrafficRegionResponse, len(regions))
+	for i, region := range regions {
+		users := make([]TrafficRegionUserStatus, len(region.Users))
+		for idx, user := range region.Users {
+			users[idx] = TrafficRegionUserStatus{
+				UserID:        user.UserID,
+				UserName:      user.UserName,
+				TotalBytesIn:  user.TotalBytesIn,
+				TotalBytesOut: user.TotalBytesOut,
+				RequestCount:  user.RequestCount,
+			}
+		}
+		response[i] = TrafficRegionResponse{
+			Key:           region.Key,
+			MapName:       region.MapName,
+			DisplayName:   region.DisplayName,
+			CountryCode:   region.CountryCode,
+			CountryName:   region.CountryName,
+			RegionName:    region.RegionName,
+			TotalBytesIn:  region.TotalBytesIn,
+			TotalBytesOut: region.TotalBytesOut,
+			RequestCount:  region.RequestCount,
+			Users:         users,
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"scope":   scope,
+		"regions": response,
+	})
+}
+
+func (h *StatsHandler) GetTrafficMapGeoJSON(c *gin.Context) {
+	scope := stats.NormalizeGeoScope(c.Query("scope"))
+	contentType, body, err := stats.GetTrafficMapGeoJSON(scope)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		return
+	}
+	c.Data(http.StatusOK, contentType, body)
 }
 
 func (h *StatsHandler) DeleteTrafficEntries(c *gin.Context) {

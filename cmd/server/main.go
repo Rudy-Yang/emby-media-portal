@@ -117,6 +117,8 @@ func main() {
 		api.GET("/traffic/users/:id", statsHandler.GetUserStats)
 		api.GET("/traffic/clients", statsHandler.GetAllClientStats)
 		api.GET("/traffic/clients/:id", statsHandler.GetClientStats)
+		api.GET("/traffic/regions", statsHandler.GetTrafficRegions)
+		api.GET("/traffic/map-geojson", statsHandler.GetTrafficMapGeoJSON)
 		api.GET("/traffic/records", statsHandler.ListTrafficEntries)
 		api.DELETE("/traffic/records", statsHandler.DeleteTrafficEntries)
 		api.DELETE("/traffic/records/:id", statsHandler.DeleteTrafficEntry)

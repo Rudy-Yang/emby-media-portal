@@ -90,12 +90,21 @@ func createTables() error {
 			device_id TEXT,
 			device_name TEXT,
 			user_agent TEXT,
+			client_ip TEXT,
 			server_id TEXT,
 			request_path TEXT,
 			traffic_kind TEXT DEFAULT '',
 			bytes_in INTEGER DEFAULT 0,
 			bytes_out INTEGER DEFAULT 0,
 			timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE TABLE IF NOT EXISTS ip_geo_cache (
+			ip TEXT PRIMARY KEY,
+			country_code TEXT,
+			country_name TEXT,
+			region_name TEXT,
+			city_name TEXT,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		)`,
 	}
 
@@ -111,6 +120,7 @@ func createTables() error {
 		`ALTER TABLE traffic_stats ADD COLUMN device_id TEXT`,
 		`ALTER TABLE traffic_stats ADD COLUMN device_name TEXT`,
 		`ALTER TABLE traffic_stats ADD COLUMN user_agent TEXT`,
+		`ALTER TABLE traffic_stats ADD COLUMN client_ip TEXT`,
 		`ALTER TABLE traffic_stats ADD COLUMN request_path TEXT`,
 		`ALTER TABLE traffic_stats ADD COLUMN traffic_kind TEXT DEFAULT ''`,
 	}
@@ -125,6 +135,7 @@ func createTables() error {
 		`CREATE INDEX IF NOT EXISTS idx_client_rules_match ON client_rules(match_type, match_value)`,
 		`CREATE INDEX IF NOT EXISTS idx_traffic_stats_user ON traffic_stats(user_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_traffic_stats_client ON traffic_stats(client_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_traffic_stats_client_ip ON traffic_stats(client_ip)`,
 		`CREATE INDEX IF NOT EXISTS idx_traffic_stats_timestamp ON traffic_stats(timestamp)`,
 	}
 
