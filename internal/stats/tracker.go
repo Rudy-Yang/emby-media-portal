@@ -346,72 +346,72 @@ func userDisplayName(record TrafficRecord) string {
 }
 
 func normalizeClientKey(record TrafficRecord) string {
-	if strings.TrimSpace(record.ClientID) == "" && strings.TrimSpace(record.ClientName) == "" {
+	clientID := normalizeLegacyStatsValue(record.ClientID)
+	clientName := normalizeLegacyStatsValue(record.ClientName)
+	if clientID == "" && clientName == "" {
 		return unknownClientKey
 	}
-	if strings.TrimSpace(record.ClientName) != "" {
-		return "name:" + strings.ToLower(record.ClientName)
+	if clientName != "" {
+		return "name:" + strings.ToLower(clientName)
 	}
-	return record.ClientID
+	return clientID
 }
 
 func clientDisplayName(record TrafficRecord) string {
 	if normalizeClientKey(record) == unknownClientKey {
 		return "未知客户端"
 	}
-	if strings.TrimSpace(record.ClientName) != "" {
-		return record.ClientName
+	if clientName := normalizeLegacyStatsValue(record.ClientName); clientName != "" {
+		return clientName
 	}
-	if strings.TrimSpace(record.DeviceName) != "" {
-		return record.DeviceName
+	if deviceName := normalizeLegacyStatsValue(record.DeviceName); deviceName != "" {
+		return deviceName
 	}
-	return record.ClientID
+	return normalizeLegacyStatsValue(record.ClientID)
 }
 
 // GetClientStats gets aggregated stats for a client.
 func GetClientStats(clientID string, since time.Time) (*Stats, error) {
-	db := database.Get()
-	if db == nil {
-		return nil, ErrDatabaseNotAvailable
-	}
-
-	stats := &Stats{ClientID: clientID}
-	query := `SELECT COALESCE(MAX(client_name), ''), COALESCE(MAX(device_id), ''), COALESCE(MAX(device_name), ''),
-		        COALESCE(SUM(bytes_in), 0), COALESCE(SUM(bytes_out), 0), COUNT(*)
-		 FROM traffic_stats
-		 WHERE client_id = ? AND timestamp >= ?`
-	args := []any{clientID, since}
 	if clientID == unknownClientKey {
-		query = `SELECT '未知客户端', '', '',
+		db := database.Get()
+		if db == nil {
+			return nil, ErrDatabaseNotAvailable
+		}
+
+		stats := &Stats{ClientID: clientID}
+		query := `SELECT '未知客户端', '', '',
 		        COALESCE(SUM(bytes_in), 0), COALESCE(SUM(bytes_out), 0), COUNT(*)
 		 FROM traffic_stats
 		 WHERE COALESCE(TRIM(client_id), '') = '' AND COALESCE(TRIM(client_name), '') = '' AND timestamp >= ?`
-		args = []any{since}
+		err := db.QueryRow(query, since).Scan(&stats.ClientName, &stats.DeviceID, &stats.DeviceName, &stats.TotalBytesIn, &stats.TotalBytesOut, &stats.RequestCount)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, record := range defaultTracker.snapshotLiveRecords() {
+			if strings.TrimSpace(record.ClientID) == "" && strings.TrimSpace(record.ClientName) == "" {
+				stats.ClientName = "未知客户端"
+				stats.TotalBytesIn += record.BytesIn
+				stats.TotalBytesOut += record.BytesOut
+				stats.RequestCount++
+			}
+		}
+
+		return stats, nil
 	}
 
-	err := db.QueryRow(query, args...).Scan(&stats.ClientName, &stats.DeviceID, &stats.DeviceName, &stats.TotalBytesIn, &stats.TotalBytesOut, &stats.RequestCount)
+	allStats, err := GetAllClientStats(since)
 	if err != nil {
 		return nil, err
 	}
-
-	for _, record := range defaultTracker.snapshotLiveRecords() {
-		switch {
-		case clientID == unknownClientKey && strings.TrimSpace(record.ClientID) == "" && strings.TrimSpace(record.ClientName) == "":
-			stats.ClientName = "未知客户端"
-			stats.TotalBytesIn += record.BytesIn
-			stats.TotalBytesOut += record.BytesOut
-			stats.RequestCount++
-		case clientID != unknownClientKey && normalizeClientKey(record) == clientID:
-			stats.ClientID = clientID
-			stats.ClientName = clientDisplayName(record)
-			stats.DeviceID = record.DeviceID
-			stats.TotalBytesIn += record.BytesIn
-			stats.TotalBytesOut += record.BytesOut
-			stats.RequestCount++
+	for _, item := range allStats {
+		if item.ClientID == clientID {
+			stats := item
+			return &stats, nil
 		}
 	}
 
-	return stats, nil
+	return &Stats{ClientID: clientID}, nil
 }
 
 // GetAllClientStats gets aggregated stats for all clients.
@@ -451,12 +451,32 @@ func GetAllClientStats(since time.Time) ([]Stats, error) {
 	defer rows.Close()
 
 	var statsList []Stats
+	indexByKey := make(map[string]int)
 	for rows.Next() {
 		var s Stats
 		if err := rows.Scan(&s.ClientID, &s.ClientName, &s.DeviceID, &s.DeviceName, &s.TotalBytesIn, &s.TotalBytesOut, &s.RequestCount); err != nil {
 			return nil, err
 		}
-		statsList = append(statsList, s)
+		s = normalizeClientStat(s)
+		idx, ok := indexByKey[s.ClientID]
+		if !ok {
+			indexByKey[s.ClientID] = len(statsList)
+			statsList = append(statsList, s)
+			continue
+		}
+
+		statsList[idx].TotalBytesIn += s.TotalBytesIn
+		statsList[idx].TotalBytesOut += s.TotalBytesOut
+		statsList[idx].RequestCount += s.RequestCount
+		if statsList[idx].ClientName == "" {
+			statsList[idx].ClientName = s.ClientName
+		}
+		if statsList[idx].DeviceID == "" {
+			statsList[idx].DeviceID = s.DeviceID
+		}
+		if statsList[idx].DeviceName == "" || s.DeviceName == "多设备" {
+			statsList[idx].DeviceName = s.DeviceName
+		}
 	}
 
 	statsList = addLiveTraffic(statsList, func(record TrafficRecord) (string, func(*Stats)) {
@@ -465,15 +485,66 @@ func GetAllClientStats(since time.Time) ([]Stats, error) {
 			s.ClientID = key
 			s.ClientName = clientDisplayName(record)
 			if s.DeviceID == "" {
-				s.DeviceID = record.DeviceID
+				s.DeviceID = normalizeLegacyStatsValue(record.DeviceID)
 			}
 			if s.DeviceName == "" {
-				s.DeviceName = record.DeviceName
+				s.DeviceName = normalizeLegacyStatsValue(record.DeviceName)
 			}
 		}
 	})
 
 	return statsList, nil
+}
+
+func normalizeClientStat(s Stats) Stats {
+	s.ClientID = normalizeLegacyStatsValue(s.ClientID)
+	s.ClientName = normalizeLegacyStatsValue(s.ClientName)
+	s.DeviceID = normalizeLegacyStatsValue(s.DeviceID)
+	if strings.TrimSpace(s.DeviceName) != "多设备" {
+		s.DeviceName = normalizeLegacyStatsValue(s.DeviceName)
+	}
+
+	switch {
+	case s.ClientID == unknownClientKey:
+		s.ClientName = "未知客户端"
+	case s.ClientName != "":
+		s.ClientID = "name:" + strings.ToLower(s.ClientName)
+	case s.ClientID == "":
+		s.ClientID = unknownClientKey
+		s.ClientName = "未知客户端"
+	}
+
+	if s.ClientName == "" {
+		if s.DeviceName != "" {
+			s.ClientName = s.DeviceName
+		} else {
+			s.ClientName = s.ClientID
+		}
+	}
+
+	return s
+}
+
+func normalizeLegacyStatsValue(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return ""
+	}
+
+	for {
+		normalized := strings.TrimSpace(value)
+		normalized = strings.TrimPrefix(normalized, `\"`)
+		normalized = strings.TrimPrefix(normalized, `"`)
+		normalized = strings.TrimSuffix(normalized, `"\`)
+		normalized = strings.TrimSuffix(normalized, `\"`)
+		normalized = strings.TrimSuffix(normalized, `"`)
+		normalized = strings.TrimSuffix(normalized, `\`)
+		normalized = strings.TrimSpace(normalized)
+		if normalized == value {
+			return normalized
+		}
+		value = normalized
+	}
 }
 
 // Stop stops the tracker

@@ -130,3 +130,53 @@ func TestDeleteTrafficEntriesByFilterDeletesOnlyMatchingUnknownUsers(t *testing.
 		t.Fatalf("remaining request path = %q, want /Videos/2/stream", remainingPath)
 	}
 }
+
+func TestGetAllClientStatsMergesMalformedClientNames(t *testing.T) {
+	db := initStatsTestDB(t)
+	now := time.Now().UTC()
+
+	for _, record := range []struct {
+		clientID   string
+		clientName string
+		deviceID   string
+		bytesOut   int64
+	}{
+		{clientID: "client:vidhub", clientName: "VidHub", deviceID: "85057A58-09E5-4ED2-A428-7BFDD2873F6E", bytesOut: 33070120},
+		{clientID: `client:vidhub"\`, clientName: `VidHub"\`, deviceID: `85057A58-09E5-4ED2-A428-7BFDD2873F6E"\`, bytesOut: 4170451355},
+	} {
+		if _, err := db.Exec(
+			`INSERT INTO traffic_stats (
+				client_id, client_name, device_id, request_path, traffic_kind, bytes_in, bytes_out, timestamp
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+			record.clientID,
+			record.clientName,
+			record.deviceID,
+			"/emby/videos/1/original.mkv",
+			"user",
+			0,
+			record.bytesOut,
+			now,
+		); err != nil {
+			t.Fatalf("seed client traffic: %v", err)
+		}
+	}
+
+	items, err := GetAllClientStats(now.Add(-time.Hour))
+	if err != nil {
+		t.Fatalf("GetAllClientStats() error = %v", err)
+	}
+
+	var matches []Stats
+	for _, item := range items {
+		if item.ClientName == "VidHub" {
+			matches = append(matches, item)
+		}
+	}
+
+	if len(matches) != 1 {
+		t.Fatalf("VidHub rows = %d, want 1", len(matches))
+	}
+	if matches[0].TotalBytesOut != 4203521475 {
+		t.Fatalf("VidHub total bytes out = %d, want %d", matches[0].TotalBytesOut, int64(4203521475))
+	}
+}
