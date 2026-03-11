@@ -32,6 +32,17 @@ func Init(dbPath string) (*sql.DB, error) {
 			return
 		}
 
+		// SQLite is sensitive to concurrent writers through database/sql's pool.
+		// Keep a single shared connection and let busy_timeout absorb short lock bursts.
+		db.SetMaxOpenConns(1)
+		db.SetMaxIdleConns(1)
+
+		if initErr = configureSQLite(db); initErr != nil {
+			_ = db.Close()
+			db = nil
+			return
+		}
+
 		// Create tables
 		initErr = createTables()
 	})
@@ -119,6 +130,23 @@ func createTables() error {
 
 	for _, q := range indexQueries {
 		if _, err := db.Exec(q); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func configureSQLite(db *sql.DB) error {
+	pragmas := []string{
+		`PRAGMA journal_mode = WAL`,
+		`PRAGMA synchronous = NORMAL`,
+		`PRAGMA busy_timeout = 5000`,
+		`PRAGMA foreign_keys = ON`,
+	}
+
+	for _, pragma := range pragmas {
+		if _, err := db.Exec(pragma); err != nil {
 			return err
 		}
 	}
