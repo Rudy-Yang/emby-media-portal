@@ -43,6 +43,12 @@ type TrafficEntriesResponse struct {
 	PageSize int             `json:"page_size"`
 }
 
+type DeleteTrafficEntriesRequest struct {
+	IDs    []int64 `json:"ids"`
+	Search string  `json:"search"`
+	Since  string  `json:"since"`
+}
+
 // GetUserStats returns stats for a specific user
 func (h *StatsHandler) GetUserStats(c *gin.Context) {
 	userID := c.Param("id")
@@ -189,6 +195,7 @@ func (h *StatsHandler) GetTrafficSummary(c *gin.Context) {
 
 func (h *StatsHandler) ListTrafficEntries(c *gin.Context) {
 	since := parseTimeRange(c.Query("since"))
+	search := c.Query("search")
 	page := 1
 	if raw := c.Query("page"); raw != "" {
 		parsed, err := strconv.Atoi(raw)
@@ -208,7 +215,9 @@ func (h *StatsHandler) ListTrafficEntries(c *gin.Context) {
 		pageSize = parsed
 	}
 
-	entries, err := stats.ListTrafficEntries(since, page, pageSize)
+	entries, err := stats.ListTrafficEntries(since, page, pageSize, stats.TrafficEntryFilters{
+		Search: search,
+	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -239,6 +248,45 @@ func (h *StatsHandler) ListTrafficEntries(c *gin.Context) {
 		Total:    entries.Total,
 		Page:     entries.Page,
 		PageSize: entries.PageSize,
+	})
+}
+
+func (h *StatsHandler) DeleteTrafficEntries(c *gin.Context) {
+	var req DeleteTrafficEntriesRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if len(req.IDs) > 0 {
+		deleted, err := stats.DeleteTrafficEntries(req.IDs)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Traffic records deleted",
+			"deleted": deleted,
+		})
+		return
+	}
+
+	if req.Search == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "search or ids required"})
+		return
+	}
+
+	deleted, err := stats.DeleteTrafficEntriesByFilter(parseTimeRange(req.Since), stats.TrafficEntryFilters{
+		Search: req.Search,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Filtered traffic records deleted",
+		"deleted": deleted,
 	})
 }
 

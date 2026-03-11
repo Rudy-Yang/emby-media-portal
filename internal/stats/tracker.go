@@ -72,6 +72,10 @@ type TrafficEntriesPage struct {
 	PageSize int            `json:"page_size"`
 }
 
+type TrafficEntryFilters struct {
+	Search string
+}
+
 type ObservedClient struct {
 	ClientName   string `json:"client_name"`
 	DeviceName   string `json:"device_name"`
@@ -690,7 +694,28 @@ func CleanOldStats(olderThan time.Duration) error {
 	return err
 }
 
-func ListTrafficEntries(since time.Time, page, pageSize int) (*TrafficEntriesPage, error) {
+const trafficEntryPublicExpr = `(
+	COALESCE(t.traffic_kind, '') = 'public'
+	OR (
+		COALESCE(TRIM(t.user_id), '') = ''
+		AND COALESCE(TRIM(t.request_path), '') <> ''
+		AND (
+			t.request_path LIKE '%/System/Info/Public'
+			OR t.request_path LIKE '%/Users/AuthenticateByName'
+			OR t.request_path LIKE '%/Sessions%'
+			OR t.request_path LIKE '%/Images/%'
+			OR t.request_path LIKE '%/web/%'
+		)
+	)
+)`
+
+const trafficEntryDisplayUserExpr = `CASE
+	WHEN ` + trafficEntryPublicExpr + ` THEN '公共请求'
+	WHEN COALESCE(TRIM(t.user_id), '') = '' THEN '未知用户'
+	ELSE COALESCE(NULLIF(u.name, ''), t.user_id)
+END`
+
+func ListTrafficEntries(since time.Time, page, pageSize int, filters TrafficEntryFilters) (*TrafficEntriesPage, error) {
 	db := database.Get()
 	if db == nil {
 		return nil, ErrDatabaseNotAvailable
@@ -703,34 +728,24 @@ func ListTrafficEntries(since time.Time, page, pageSize int) (*TrafficEntriesPag
 	}
 	offset := (page - 1) * pageSize
 
+	whereClause, args := buildTrafficEntryFilters(since, filters)
+
 	var total int64
-	if err := db.QueryRow(`SELECT COUNT(*) FROM traffic_stats WHERE timestamp >= ?`, since).Scan(&total); err != nil {
+	countQuery := `SELECT COUNT(*)
+		FROM traffic_stats t
+		LEFT JOIN users u ON u.id = t.user_id
+		` + whereClause
+	if err := db.QueryRow(countQuery, args...).Scan(&total); err != nil {
 		return nil, err
 	}
 
+	listArgs := append(append([]any{}, args...), pageSize, offset)
 	rows, err := db.Query(
 		`SELECT
 		     t.id,
 		     t.timestamp,
 		     t.user_id,
-		     CASE
-		         WHEN (
-		           COALESCE(t.traffic_kind, '') = 'public'
-		           OR (
-		             COALESCE(TRIM(t.user_id), '') = ''
-		             AND COALESCE(TRIM(t.request_path), '') <> ''
-		             AND (
-		               t.request_path LIKE '%/System/Info/Public'
-		               OR t.request_path LIKE '%/Users/AuthenticateByName'
-		               OR t.request_path LIKE '%/Sessions%'
-		               OR t.request_path LIKE '%/Images/%'
-		               OR t.request_path LIKE '%/web/%'
-		             )
-		           )
-		         ) THEN '公共请求'
-		         WHEN COALESCE(TRIM(t.user_id), '') = '' THEN '未知用户'
-		         ELSE COALESCE(NULLIF(u.name, ''), t.user_id)
-		     END AS display_user_name,
+		     `+trafficEntryDisplayUserExpr+` AS display_user_name,
 		     COALESCE(t.client_id, ''),
 		     COALESCE(t.client_name, ''),
 		     COALESCE(t.device_id, ''),
@@ -743,10 +758,10 @@ func ListTrafficEntries(since time.Time, page, pageSize int) (*TrafficEntriesPag
 		     COALESCE(t.bytes_out, 0)
 		 FROM traffic_stats t
 		 LEFT JOIN users u ON u.id = t.user_id
-		 WHERE t.timestamp >= ?
+		 `+whereClause+`
 		 ORDER BY t.timestamp DESC, t.id DESC
 		 LIMIT ? OFFSET ?`,
-		since, pageSize, offset,
+		listArgs...,
 	)
 	if err != nil {
 		return nil, err
@@ -783,6 +798,34 @@ func ListTrafficEntries(since time.Time, page, pageSize int) (*TrafficEntriesPag
 		Page:     page,
 		PageSize: pageSize,
 	}, nil
+}
+
+func buildTrafficEntryFilters(since time.Time, filters TrafficEntryFilters) (string, []any) {
+	clauses := []string{"t.timestamp >= ?"}
+	args := []any{since}
+
+	search := strings.TrimSpace(filters.Search)
+	if search != "" {
+		pattern := "%" + search + "%"
+		clauses = append(clauses,
+			`(`+trafficEntryDisplayUserExpr+` LIKE ?
+			OR COALESCE(t.user_id, '') LIKE ?
+			OR COALESCE(t.client_id, '') LIKE ?
+			OR COALESCE(t.client_name, '') LIKE ?
+			OR COALESCE(t.device_id, '') LIKE ?
+			OR COALESCE(t.device_name, '') LIKE ?
+			OR COALESCE(t.user_agent, '') LIKE ?
+			OR COALESCE(t.server_id, '') LIKE ?
+			OR COALESCE(t.request_path, '') LIKE ?
+			OR COALESCE(t.traffic_kind, '') LIKE ?
+			OR COALESCE(t.timestamp, '') LIKE ?)`,
+		)
+		for i := 0; i < 11; i++ {
+			args = append(args, pattern)
+		}
+	}
+
+	return "WHERE " + strings.Join(clauses, " AND "), args
 }
 
 func ListObservedClients(limit int) ([]ObservedClient, error) {
@@ -955,6 +998,59 @@ func DeleteTrafficEntry(id int64) error {
 	}
 	_, err := db.Exec("DELETE FROM traffic_stats WHERE id = ?", id)
 	return err
+}
+
+func DeleteTrafficEntries(ids []int64) (int64, error) {
+	db := database.Get()
+	if db == nil {
+		return 0, ErrDatabaseNotAvailable
+	}
+	if len(ids) == 0 {
+		return 0, nil
+	}
+
+	placeholders := make([]string, 0, len(ids))
+	args := make([]any, 0, len(ids))
+	for _, id := range ids {
+		if id <= 0 {
+			continue
+		}
+		placeholders = append(placeholders, "?")
+		args = append(args, id)
+	}
+	if len(placeholders) == 0 {
+		return 0, nil
+	}
+
+	result, err := db.Exec("DELETE FROM traffic_stats WHERE id IN ("+strings.Join(placeholders, ",")+")", args...)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+func DeleteTrafficEntriesByFilter(since time.Time, filters TrafficEntryFilters) (int64, error) {
+	db := database.Get()
+	if db == nil {
+		return 0, ErrDatabaseNotAvailable
+	}
+	if strings.TrimSpace(filters.Search) == "" {
+		return 0, nil
+	}
+
+	whereClause, args := buildTrafficEntryFilters(since, filters)
+	query := `DELETE FROM traffic_stats
+		WHERE id IN (
+			SELECT t.id
+			FROM traffic_stats t
+			LEFT JOIN users u ON u.id = t.user_id
+			` + whereClause + `
+		)`
+	result, err := db.Exec(query, args...)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 func ResetTrafficStats() error {

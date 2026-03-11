@@ -30,6 +30,7 @@ type Proxy struct {
 	transport      *http.Transport
 	playbackMu     sync.Mutex
 	playbackUsers  map[string]recentPlaybackUser
+	recentUsers    map[string]recentPlaybackUser
 }
 
 type recentPlaybackUser struct {
@@ -51,6 +52,7 @@ func NewProxy(
 		rulesManager:   rulesManager,
 		statsTracker:   statsTracker,
 		playbackUsers:  make(map[string]recentPlaybackUser),
+		recentUsers:    make(map[string]recentPlaybackUser),
 		transport: &http.Transport{
 			MaxIdleConns:        100,
 			MaxIdleConnsPerHost: 20,
@@ -126,6 +128,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	trafficKind = classifyTraffic(r, userID)
 	if userID != "" {
+		p.rememberRecentUser(r, client, userID, userName)
 		p.rememberPlaybackUser(r, client, userID, userName)
 	}
 
@@ -383,17 +386,18 @@ func rewriteDiscoveryResponse(r *http.Request, resp *http.Response, backendBaseU
 	return rewritten, len(rewritten), true
 }
 
-var singleItemPathPattern = regexp.MustCompile(`^/(Users/[^/]+/)?Items/[^/]+$`)
-var playbackInfoItemPathPattern = regexp.MustCompile(`(?i)^/(?:emby/)?Items/([^/]+)/PlaybackInfo$`)
-var videoItemPathPattern = regexp.MustCompile(`(?i)^/(?:emby/)?Videos/([^/]+)/`)
+var singleItemPathPattern = regexp.MustCompile(`^/(?:users/[^/]+/)?items/[^/]+$`)
+var playbackInfoItemPathPattern = regexp.MustCompile(`^/items/([^/]+)/playbackinfo$`)
+var videoItemPathPattern = regexp.MustCompile(`^/videos/([^/]+)/`)
 
 func shouldRewriteJSONPath(path string) bool {
+	path = normalizeAPIPath(path)
 	switch {
-	case strings.HasSuffix(path, "/System/Info"):
+	case strings.HasSuffix(path, "/system/info"):
 		return true
-	case strings.HasSuffix(path, "/System/Info/Public"):
+	case strings.HasSuffix(path, "/system/info/public"):
 		return true
-	case strings.HasSuffix(path, "/PlaybackInfo"):
+	case strings.HasSuffix(path, "/playbackinfo"):
 		return true
 	case singleItemPathPattern.MatchString(path):
 		return true
@@ -451,12 +455,12 @@ func rewriteDiscoveryJSON(path string, body []byte, backendBaseURL, proxyBase st
 	return serialized, changed
 }
 
-
 func shouldRewriteServerDiscovery(path string) bool {
+	path = normalizeAPIPath(path)
 	switch {
-	case strings.HasSuffix(path, "/System/Info"):
+	case strings.HasSuffix(path, "/system/info"):
 		return true
-	case strings.HasSuffix(path, "/System/Info/Public"):
+	case strings.HasSuffix(path, "/system/info/public"):
 		return true
 	default:
 		return false
@@ -464,7 +468,8 @@ func shouldRewriteServerDiscovery(path string) bool {
 }
 
 func shouldSanitizeMediaPaths(path string) bool {
-	if strings.HasSuffix(path, "/PlaybackInfo") {
+	path = normalizeAPIPath(path)
+	if strings.HasSuffix(path, "/playbackinfo") {
 		return true
 	}
 	return singleItemPathPattern.MatchString(path)
@@ -621,8 +626,9 @@ func (p *Proxy) rememberPlaybackUser(r *http.Request, client *auth.ClientInfo, u
 	if strings.TrimSpace(userID) == "" || r == nil {
 		return
 	}
-	key := playbackContextKey(r, client)
-	if key == "" {
+
+	itemID := playbackItemID(r.URL.Path)
+	if itemID == "" {
 		return
 	}
 
@@ -630,28 +636,37 @@ func (p *Proxy) rememberPlaybackUser(r *http.Request, client *auth.ClientInfo, u
 	p.playbackMu.Lock()
 	defer p.playbackMu.Unlock()
 	p.cleanupPlaybackUsersLocked(now)
-	p.playbackUsers[key] = recentPlaybackUser{
-		UserID:    userID,
-		UserName:  userName,
-		ExpiresAt: now.Add(3 * time.Minute),
+
+	for _, key := range playbackIdentityKeys(r, client) {
+		p.playbackUsers[key+"|item:"+itemID] = recentPlaybackUser{
+			UserID:    userID,
+			UserName:  userName,
+			ExpiresAt: now.Add(3 * time.Minute),
+		}
 	}
 }
 
 func (p *Proxy) lookupRecentPlaybackUser(r *http.Request, client *auth.ClientInfo) (recentPlaybackUser, bool) {
-	key := playbackContextKey(r, client)
-	if key == "" {
-		return recentPlaybackUser{}, false
-	}
-
 	now := time.Now()
 	p.playbackMu.Lock()
 	defer p.playbackMu.Unlock()
 	p.cleanupPlaybackUsersLocked(now)
-	recent, ok := p.playbackUsers[key]
-	if !ok || now.After(recent.ExpiresAt) {
-		return recentPlaybackUser{}, false
+
+	if itemID := playbackItemID(r.URL.Path); itemID != "" {
+		for _, key := range playbackIdentityKeys(r, client) {
+			if recent, ok := p.playbackUsers[key+"|item:"+itemID]; ok && !now.After(recent.ExpiresAt) {
+				return recent, true
+			}
+		}
 	}
-	return recent, true
+
+	for _, key := range playbackIdentityKeys(r, client) {
+		if recent, ok := p.recentUsers[key]; ok && !now.After(recent.ExpiresAt) {
+			return recent, true
+		}
+	}
+
+	return recentPlaybackUser{}, false
 }
 
 func (p *Proxy) cleanupPlaybackUsersLocked(now time.Time) {
@@ -660,40 +675,84 @@ func (p *Proxy) cleanupPlaybackUsersLocked(now time.Time) {
 			delete(p.playbackUsers, key)
 		}
 	}
+	for key, recent := range p.recentUsers {
+		if now.After(recent.ExpiresAt) {
+			delete(p.recentUsers, key)
+		}
+	}
 }
 
-func playbackContextKey(r *http.Request, client *auth.ClientInfo) string {
-	if r == nil {
-		return ""
-	}
-	itemID := playbackItemID(r.URL.Path)
-	if itemID == "" {
-		return ""
+func (p *Proxy) rememberRecentUser(r *http.Request, client *auth.ClientInfo, userID, userName string) {
+	if strings.TrimSpace(userID) == "" || r == nil {
+		return
 	}
 
-	clientKey := ""
+	now := time.Now()
+	p.playbackMu.Lock()
+	defer p.playbackMu.Unlock()
+	p.cleanupPlaybackUsersLocked(now)
+	for _, key := range playbackIdentityKeys(r, client) {
+		p.recentUsers[key] = recentPlaybackUser{
+			UserID:    userID,
+			UserName:  userName,
+			ExpiresAt: now.Add(3 * time.Minute),
+		}
+	}
+}
+
+func playbackIdentityKeys(r *http.Request, client *auth.ClientInfo) []string {
+	if r == nil {
+		return nil
+	}
+
+	keys := make([]string, 0, 8)
+	seen := make(map[string]struct{})
+	addKey := func(key string) {
+		key = strings.TrimSpace(key)
+		if key == "" {
+			return
+		}
+		if _, ok := seen[key]; ok {
+			return
+		}
+		seen[key] = struct{}{}
+		keys = append(keys, key)
+	}
+
+	clientIP := clientIPFromRequest(r)
+	normalizedIP := normalizePlaybackKey(clientIP)
 	if client != nil {
-		switch {
-		case strings.TrimSpace(client.DeviceID) != "":
-			clientKey = "device:" + normalizePlaybackKey(client.DeviceID)
-		case strings.TrimSpace(client.ClientName) != "":
-			clientKey = "client:" + normalizePlaybackKey(client.ClientName)
-		case strings.TrimSpace(client.UserAgent) != "":
-			clientKey = "ua:" + normalizePlaybackKey(client.UserAgent)
+		if deviceID := normalizePlaybackKey(client.DeviceID); deviceID != "" {
+			addKey("device:" + deviceID)
+		}
+		if token := normalizePlaybackKey(client.Token); token != "" {
+			addKey("token:" + token)
+		}
+
+		clientName := normalizePlaybackKey(client.ClientName)
+		userAgent := normalizePlaybackKey(client.UserAgent)
+		if clientName != "" && normalizedIP != "" {
+			addKey("client-ip:" + clientName + "|ip:" + normalizedIP)
+		}
+		if userAgent != "" && normalizedIP != "" {
+			addKey("ua-ip:" + userAgent + "|ip:" + normalizedIP)
+		}
+		if clientName != "" {
+			addKey("client:" + clientName)
+		}
+		if userAgent != "" {
+			addKey("ua:" + userAgent)
 		}
 	}
-	if clientKey == "" {
-		if ip := clientIPFromRequest(r); ip != "" {
-			clientKey = "ip:" + normalizePlaybackKey(ip)
-		}
+	if normalizedIP != "" {
+		addKey("ip:" + normalizedIP)
 	}
-	if clientKey == "" {
-		return ""
-	}
-	return clientKey + "|item:" + itemID
+
+	return keys
 }
 
 func playbackItemID(path string) string {
+	path = normalizeAPIPath(path)
 	if matches := videoItemPathPattern.FindStringSubmatch(path); len(matches) > 1 {
 		return strings.TrimSpace(matches[1])
 	}
@@ -717,21 +776,38 @@ func classifyTraffic(r *http.Request, userID string) string {
 		return "user"
 	}
 
-	path := r.URL.Path
+	path := normalizeAPIPath(r.URL.Path)
 	switch {
-	case strings.HasSuffix(path, "/System/Info/Public"):
+	case strings.HasSuffix(path, "/system/info/public"):
 		return "public"
-	case strings.HasSuffix(path, "/Users/AuthenticateByName"):
+	case strings.HasSuffix(path, "/users/authenticatebyname"):
 		return "public"
-	case strings.HasPrefix(path, "/Sessions"), strings.Contains(path, "/Sessions/"):
+	case strings.HasPrefix(path, "/sessions"), strings.Contains(path, "/sessions/"):
 		return "public"
-	case strings.Contains(path, "/Images/"):
+	case strings.Contains(path, "/images/"):
 		return "public"
 	case strings.HasPrefix(path, "/web/"), strings.Contains(path, "/web/"):
 		return "public"
 	default:
 		return "unknown"
 	}
+}
+
+func normalizeAPIPath(path string) string {
+	path = strings.TrimSpace(strings.ToLower(path))
+	if path == "" {
+		return ""
+	}
+	if !strings.HasPrefix(path, "/") {
+		path = "/" + path
+	}
+	if strings.HasPrefix(path, "/emby/") {
+		return strings.TrimPrefix(path, "/emby")
+	}
+	if path == "/emby" {
+		return "/"
+	}
+	return path
 }
 
 func clientIPFromRequest(r *http.Request) string {

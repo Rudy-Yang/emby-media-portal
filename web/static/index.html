@@ -392,9 +392,29 @@
       transform-origin: 110px 110px;
     }
 
+    .pie-wrap.is-animating .pie-slice {
+      animation: pie-slice-reveal 620ms cubic-bezier(.2, .8, .2, 1) both;
+      animation-delay: var(--slice-delay, 0ms);
+    }
+
     .pie-slice:hover {
       transform: scale(1.03);
       opacity: 0.96;
+    }
+
+    @keyframes pie-slice-reveal {
+      0% {
+        opacity: 0;
+        transform: scale(0.18) rotate(var(--slice-rotate, -8deg));
+      }
+      68% {
+        opacity: 1;
+        transform: scale(1.04) rotate(0deg);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1) rotate(0deg);
+      }
     }
 
     .chart-side {
@@ -965,6 +985,14 @@
       flex-wrap: wrap;
     }
 
+    .traffic-records-search {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      flex: 1 1 420px;
+    }
+
     .traffic-records-controls label,
     .traffic-records-pagination {
       display: inline-flex;
@@ -985,14 +1013,56 @@
       outline: none;
     }
 
+    .traffic-records-search input {
+      min-width: min(360px, 100%);
+      flex: 1 1 280px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(12, 21, 39, 0.92);
+      color: var(--text);
+      outline: none;
+    }
+
+    .traffic-records-bulk {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .traffic-records-filter-summary {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(120, 157, 241, 0.18);
+      background: rgba(10, 22, 43, 0.68);
+    }
+
+    .traffic-records-filter-summary .btn {
+      padding: 8px 12px;
+    }
+
     .traffic-records-pagination .btn {
       min-width: 72px;
     }
 
+    .record-table td:first-child,
+    .record-table th:first-child,
     .record-table td:last-child,
     .record-table th:last-child {
       width: 72px;
       text-align: center;
+    }
+
+    .record-check {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
     }
 
     .record-meta {
@@ -1373,7 +1443,12 @@
         </div>
         <div id="trafficRecordsPane" class="traffic-pane">
           <div class="traffic-records-toolbar">
-            <div class="muted">展示当前时间范围内的数据库记录，可逐条删除。</div>
+            <div class="traffic-records-search">
+              <input id="trafficRecordsSearch" placeholder="搜索用户、客户端、设备、路径、流量类型..." onkeydown="handleTrafficRecordsSearchKeydown(event)">
+              <button class="btn" onclick="applyTrafficRecordsSearch()">搜索</button>
+              <button class="btn" onclick="applyTrafficRecordsSearch('未知用户')">未知用户</button>
+              <button class="btn" onclick="clearTrafficRecordsSearch()">清空</button>
+            </div>
             <div class="traffic-records-controls">
               <label for="trafficRecordsPageSize">每页条数
                 <select id="trafficRecordsPageSize" onchange="setTrafficRecordsPageSize(this.value)">
@@ -1387,11 +1462,17 @@
                 <span id="trafficRecordsPageInfo">第 1 / 1 页</span>
                 <button id="trafficRecordsNext" class="btn" onclick="changeTrafficRecordsPage(1)">下一页</button>
               </div>
+              <div class="traffic-records-bulk">
+                <span id="trafficRecordsSelectionInfo" class="muted">已选 0 条</span>
+                <button id="trafficRecordsDeleteSelected" class="btn danger" onclick="deleteSelectedTrafficRecords()" disabled>删除已选</button>
+                <button id="trafficRecordsDeleteFiltered" class="btn danger" onclick="deleteFilteredTrafficRecords()" disabled>删除搜索结果</button>
+              </div>
               <button class="btn danger" onclick="resetTrafficDatabase()">清空数据库</button>
             </div>
           </div>
+          <div id="trafficRecordsFilterSummary" class="traffic-records-filter-summary hidden"></div>
           <table class="record-table">
-            <thead><tr><th>时间</th><th>名称</th><th>类型</th><th>客户端</th><th>设备</th><th>路径</th><th>入站</th><th>出站</th><th>操作</th></tr></thead>
+            <thead><tr><th><input id="trafficRecordsSelectAll" class="record-check" type="checkbox" onchange="toggleTrafficRecordsPageSelection(this.checked)"></th><th>时间</th><th>名称</th><th>类型</th><th>客户端</th><th>设备</th><th>路径</th><th>入站</th><th>出站</th><th>操作</th></tr></thead>
             <tbody id="trafficRecords"></tbody>
           </table>
         </div>
@@ -1438,6 +1519,9 @@
     let trafficClientChartTopN = Number(localStorage.getItem("emby_mp_chart_topn_client") || "8");
     let trafficRecordsPage = Number(localStorage.getItem("emby_mp_records_page") || "1");
     let trafficRecordsPageSize = Number(localStorage.getItem("emby_mp_records_page_size") || "50");
+    let trafficRecordsSearch = localStorage.getItem("emby_mp_records_search") || "";
+    let trafficRecordSelection = new Set();
+    let trafficRecordsCurrentItems = [];
     let cachedUsers = [];
     let cachedObservedClients = [];
     let cachedClientRules = [];
@@ -1452,6 +1536,10 @@
     let autoRefreshInFlight = false;
     let isRestarting = false;
     let clientNameAutofilled = false;
+    const pieChartAnimationState = {
+      trafficUserChart: { hasAnimated: false, replayToken: 0, appliedReplayToken: -1 },
+      trafficClientChart: { hasAnimated: false, replayToken: 0, appliedReplayToken: -1 }
+    };
     const tableSortState = {
       overviewUsers: { key: "total_bytes_out", dir: "desc" },
       overviewClients: { key: "total_bytes_out", dir: "desc" },
@@ -1645,6 +1733,7 @@
     function setTrafficRange(range) {
       currentTrafficRange = range;
       trafficRecordsPage = 1;
+      trafficRecordSelection.clear();
       localStorage.setItem("emby_mp_traffic_range", range);
       localStorage.setItem("emby_mp_records_page", "1");
       document.querySelectorAll("#trafficRangeSegment button").forEach((button) => {
@@ -1672,6 +1761,36 @@
       loadTraffic({ showLoading: false, preserveScroll: true });
     }
 
+    function handleTrafficRecordsSearchKeydown(event) {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        applyTrafficRecordsSearch();
+      }
+    }
+
+    function applyTrafficRecordsSearch(preset = null) {
+      const input = document.getElementById("trafficRecordsSearch");
+      const nextSearch = String(preset !== null ? preset : input?.value || "").trim();
+      trafficRecordsSearch = nextSearch;
+      trafficRecordsPage = 1;
+      trafficRecordSelection.clear();
+      if (input) input.value = nextSearch;
+      localStorage.setItem("emby_mp_records_search", nextSearch);
+      localStorage.setItem("emby_mp_records_page", "1");
+      loadTraffic({ showLoading: false, preserveScroll: true });
+    }
+
+    function clearTrafficRecordsSearch() {
+      trafficRecordsSearch = "";
+      trafficRecordsPage = 1;
+      trafficRecordSelection.clear();
+      const input = document.getElementById("trafficRecordsSearch");
+      if (input) input.value = "";
+      localStorage.removeItem("emby_mp_records_search");
+      localStorage.setItem("emby_mp_records_page", "1");
+      loadTraffic({ showLoading: false, preserveScroll: true });
+    }
+
     function changeTrafficRecordsPage(delta) {
       const nextPage = Math.max(1, trafficRecordsPage + Number(delta || 0));
       if (nextPage === trafficRecordsPage) return;
@@ -1690,6 +1809,66 @@
       if (prevButton) prevButton.disabled = page <= 1;
       if (nextButton) nextButton.disabled = page >= totalPages;
       if (pageSizeSelect) pageSizeSelect.value = String(pageSize);
+    }
+
+    function updateTrafficRecordSelectionUI(total = trafficRecordsCurrentItems.length) {
+      const selectionInfo = document.getElementById("trafficRecordsSelectionInfo");
+      const deleteSelectedButton = document.getElementById("trafficRecordsDeleteSelected");
+      const deleteFilteredButton = document.getElementById("trafficRecordsDeleteFiltered");
+      const selectAllBox = document.getElementById("trafficRecordsSelectAll");
+      const selectedCount = trafficRecordSelection.size;
+      const pageIds = (trafficRecordsCurrentItems || []).map((item) => Number(item.id)).filter((id) => Number.isFinite(id) && id > 0);
+      const selectedOnPage = pageIds.filter((id) => trafficRecordSelection.has(id)).length;
+
+      if (selectionInfo) {
+        const searchLabel = trafficRecordsSearch ? `，筛选命中 ${Number(total) || 0} 条` : "";
+        selectionInfo.textContent = `已选 ${selectedCount} 条${searchLabel}`;
+      }
+      if (deleteSelectedButton) deleteSelectedButton.disabled = selectedCount === 0;
+      if (deleteFilteredButton) deleteFilteredButton.disabled = !trafficRecordsSearch || !(Number(total) > 0);
+      if (selectAllBox) {
+        selectAllBox.checked = pageIds.length > 0 && selectedOnPage === pageIds.length;
+        selectAllBox.indeterminate = selectedOnPage > 0 && selectedOnPage < pageIds.length;
+      }
+    }
+
+    function updateTrafficRecordsFilterSummary(total = trafficRecordsCurrentItems.length) {
+      const summary = document.getElementById("trafficRecordsFilterSummary");
+      if (!summary) return;
+
+      if (!trafficRecordsSearch) {
+        summary.innerHTML = "";
+        summary.classList.add("hidden");
+        return;
+      }
+
+      summary.classList.remove("hidden");
+      summary.innerHTML = `
+        <span class="tag">当前筛选：${safe(trafficRecordsSearch)}</span>
+        <span class="muted">匹配 ${Number(total) || 0} 条记录，可直接判断并删除未知用户等异常数据。</span>
+        <button class="btn" onclick="clearTrafficRecordsSearch()">清除筛选</button>
+      `;
+    }
+
+    function toggleTrafficRecordSelection(id, checked) {
+      const numericId = Number(id);
+      if (!Number.isFinite(numericId) || numericId <= 0) return;
+      if (checked) trafficRecordSelection.add(numericId);
+      else trafficRecordSelection.delete(numericId);
+      updateTrafficRecordSelectionUI();
+    }
+
+    function toggleTrafficRecordsPageSelection(checked) {
+      (trafficRecordsCurrentItems || []).forEach((item) => {
+        const id = Number(item?.id);
+        if (!Number.isFinite(id) || id <= 0) return;
+        if (checked) trafficRecordSelection.add(id);
+        else trafficRecordSelection.delete(id);
+      });
+      document.querySelectorAll("#trafficRecords input[data-record-id]").forEach((input) => {
+        input.checked = checked;
+      });
+      updateTrafficRecordSelectionUI();
     }
 
     function currentSection() {
@@ -2095,9 +2274,11 @@
       if (kind === "user") {
         trafficUserChartTopN = parsed;
         localStorage.setItem("emby_mp_chart_topn_user", String(parsed));
+        pieChartAnimationState.trafficUserChart.replayToken += 1;
       } else {
         trafficClientChartTopN = parsed;
         localStorage.setItem("emby_mp_chart_topn_client", String(parsed));
+        pieChartAnimationState.trafficClientChart.replayToken += 1;
       }
       loadTraffic();
     }
@@ -2153,6 +2334,7 @@
     function renderPieChart(containerId, items, labelKey, topN) {
       const container = document.getElementById(containerId);
       if (!container) return;
+      const animationState = pieChartAnimationState[containerId] || { hasAnimated: false, replayToken: 0, appliedReplayToken: -1 };
 
       const series = buildPieSeries(items, labelKey, topN);
       const total = series.reduce((sum, item) => sum + item.value, 0);
@@ -2161,6 +2343,8 @@
         return;
       }
 
+      const shouldAnimate = !animationState.hasAnimated || animationState.appliedReplayToken !== animationState.replayToken;
+
       let currentAngle = 0;
       const slices = series.map((item, index) => {
         const angle = (item.value / total) * 360;
@@ -2168,12 +2352,12 @@
         currentAngle += angle;
         const color = chartPalette(index);
         const percent = ((item.value / total) * 100).toFixed(1);
-        return { ...item, color, path, percent };
+        return { ...item, color, path, percent, delay: index * 72, rotate: index % 2 === 0 ? -8 : 8 };
       });
 
       container.innerHTML = `
         <div class="chart-shell">
-          <div class="pie-wrap">
+          <div class="pie-wrap ${shouldAnimate ? "is-animating" : ""}">
             <div class="pie-tooltip" aria-hidden="true">
               <span class="pie-tooltip-swatch"></span>
               <div class="pie-tooltip-text">
@@ -2182,7 +2366,7 @@
               </div>
             </div>
             <svg viewBox="0 0 220 220" aria-hidden="true">
-              ${slices.map((slice) => `<path class="pie-slice" data-label="${safe(slice.label)}" data-value="${slice.value}" data-percent="${slice.percent}" data-color="${slice.color}" d="${slice.path}" fill="${slice.color}" stroke="#08172e" stroke-width="2"></path>`).join("")}
+              ${slices.map((slice) => `<path class="pie-slice" data-label="${safe(slice.label)}" data-value="${slice.value}" data-percent="${slice.percent}" data-color="${slice.color}" d="${slice.path}" fill="${slice.color}" stroke="#08172e" stroke-width="2" style="--slice-delay:${slice.delay}ms; --slice-rotate:${slice.rotate}deg;"></path>`).join("")}
             </svg>
           </div>
           <div class="chart-side">
@@ -2213,6 +2397,8 @@
       const meta = tooltip?.querySelector(".pie-tooltip-meta");
 
       if (!pieWrap || !tooltip || !swatch || !label || !meta) return;
+      animationState.hasAnimated = true;
+      animationState.appliedReplayToken = animationState.replayToken;
 
       const moveTooltip = (event) => {
         const rect = pieWrap.getBoundingClientRect();
@@ -2444,21 +2630,33 @@
       const { showLoading = false, preserveScroll = false } = options;
       const userTopSelect = document.getElementById("trafficUserChartTopN");
       const clientTopSelect = document.getElementById("trafficClientChartTopN");
+      const recordsSearchInput = document.getElementById("trafficRecordsSearch");
       const scrollTop = preserveScroll && currentSection() === "traffic" ? window.scrollY : null;
       if (userTopSelect) userTopSelect.value = String(trafficUserChartTopN);
       if (clientTopSelect) clientTopSelect.value = String(trafficClientChartTopN);
+      if (recordsSearchInput && recordsSearchInput.value !== trafficRecordsSearch) {
+        recordsSearchInput.value = trafficRecordsSearch;
+      }
 
       if (currentTrafficView === "records") {
-        const recordsResponse = await api(`/traffic/records?since=${currentTrafficRange}&page=${trafficRecordsPage}&page_size=${trafficRecordsPageSize}`);
+        const params = new URLSearchParams({
+          since: currentTrafficRange,
+          page: String(trafficRecordsPage),
+          page_size: String(trafficRecordsPageSize)
+        });
+        if (trafficRecordsSearch) params.set("search", trafficRecordsSearch);
+        const recordsResponse = await api(`/traffic/records?${params.toString()}`);
         const totalPages = Math.max(1, Math.ceil((Number(recordsResponse.total) || 0) / Math.max(1, Number(recordsResponse.page_size) || 1)));
         if ((recordsResponse.page || 1) > totalPages && totalPages > 0) {
           trafficRecordsPage = totalPages;
           localStorage.setItem("emby_mp_records_page", String(trafficRecordsPage));
           return loadTraffic(options);
         }
+        trafficRecordsCurrentItems = recordsResponse.items || [];
         updateTrafficRecordsPagination(recordsResponse.total, recordsResponse.page || 1, recordsResponse.page_size || trafficRecordsPageSize);
-        rows("trafficRecords", recordsResponse.items || [], (item) =>
+        rows("trafficRecords", trafficRecordsCurrentItems, (item) =>
           `<tr>
+            <td><input class="record-check" data-record-id="${Number(item.id)}" type="checkbox" ${trafficRecordSelection.has(Number(item.id)) ? "checked" : ""} onchange="toggleTrafficRecordSelection(${Number(item.id)}, this.checked)"></td>
             <td>${safe(formatDateTime(item.timestamp))}</td>
             <td><div class="record-meta"><div class="record-title">${safe(item.user_name || item.user_id || "未知")}</div><div class="record-subtitle">${safe(item.server_id || "-")}</div></div></td>
             <td>${safe(trafficKindLabel(item.traffic_kind))}</td>
@@ -2469,7 +2667,9 @@
             <td>${formatBytes(item.total_bytes_out)}</td>
             <td><button class="btn danger" onclick="deleteTrafficRecord(${Number(item.id)})">删除</button></td>
           </tr>`,
-        9, "暂无数据库记录");
+        10, "暂无数据库记录");
+        updateTrafficRecordSelectionUI(recordsResponse.total);
+        updateTrafficRecordsFilterSummary(recordsResponse.total);
         restoreScrollPosition(scrollTop);
         return;
       }
@@ -2512,14 +2712,51 @@
     async function deleteTrafficRecord(id) {
       if (!confirm(`确定删除数据库记录 #${id} 吗？`)) return;
       await api(`/traffic/records/${id}`, { method: "DELETE" });
+      trafficRecordSelection.delete(Number(id));
       await refreshTrafficDataViews();
       toast("数据库记录已删除");
+    }
+
+    async function deleteSelectedTrafficRecords() {
+      const ids = Array.from(trafficRecordSelection);
+      if (!ids.length) {
+        toast("请先勾选要删除的记录");
+        return;
+      }
+      if (!confirm(`确定删除已选中的 ${ids.length} 条数据库记录吗？`)) return;
+      const result = await api("/traffic/records", {
+        method: "DELETE",
+        body: JSON.stringify({ ids })
+      });
+      trafficRecordSelection.clear();
+      await refreshTrafficDataViews();
+      toast(`已删除 ${Number(result.deleted) || ids.length} 条记录`);
+    }
+
+    async function deleteFilteredTrafficRecords() {
+      if (!trafficRecordsSearch) {
+        toast("请先输入搜索关键词");
+        return;
+      }
+      if (!confirm(`确定删除当前搜索“${trafficRecordsSearch}”命中的记录吗？`)) return;
+      if (!confirm("此操作会删除当前时间范围内所有匹配记录，且不可恢复。")) return;
+      const result = await api("/traffic/records", {
+        method: "DELETE",
+        body: JSON.stringify({
+          search: trafficRecordsSearch,
+          since: currentTrafficRange
+        })
+      });
+      trafficRecordSelection.clear();
+      await refreshTrafficDataViews();
+      toast(`已删除 ${Number(result.deleted) || 0} 条搜索结果`);
     }
 
     async function resetTrafficDatabase() {
       if (!confirm("确定清空整个流量数据库吗？此操作不可恢复。")) return;
       if (!confirm("请再次确认：要清空所有流量统计记录吗？")) return;
       await api("/traffic/reset", { method: "DELETE" });
+      trafficRecordSelection.clear();
       await refreshTrafficDataViews();
       toast("流量数据库已清空");
     }
@@ -2669,6 +2906,10 @@
     });
     document.getElementById("trafficSummaryPane").classList.toggle("active", currentTrafficView === "summary");
     document.getElementById("trafficRecordsPane").classList.toggle("active", currentTrafficView === "records");
+    const trafficRecordsSearchInput = document.getElementById("trafficRecordsSearch");
+    if (trafficRecordsSearchInput) trafficRecordsSearchInput.value = trafficRecordsSearch;
+    updateTrafficRecordSelectionUI();
+    updateTrafficRecordsFilterSummary();
     fetch("/api/auth/status", { credentials: "same-origin" })
       .then((response) => response.json())
       .then((status) => {

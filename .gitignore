@@ -1,9 +1,21 @@
 config.yaml
 config.db
+*.sqlite
+*.sqlite3
 data/
+data/*.db
+.env
+.env.*
 debug-server.log
 debug-server.err.log
+*.log
 emby-media-portal
 *.exe
 *.exe~
 .DS_Store
+screenshots/
+captures/
+Screenshot*.png
+Screen Shot*.png
+屏幕截图*.png
+屏幕快照*.png

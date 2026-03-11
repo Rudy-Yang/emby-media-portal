@@ -118,6 +118,7 @@ func main() {
 		api.GET("/traffic/clients", statsHandler.GetAllClientStats)
 		api.GET("/traffic/clients/:id", statsHandler.GetClientStats)
 		api.GET("/traffic/records", statsHandler.ListTrafficEntries)
+		api.DELETE("/traffic/records", statsHandler.DeleteTrafficEntries)
 		api.DELETE("/traffic/records/:id", statsHandler.DeleteTrafficEntry)
 		api.DELETE("/traffic/reset", statsHandler.ResetTrafficStats)
 		api.GET("/traffic/servers/:id", statsHandler.GetServerStats)
