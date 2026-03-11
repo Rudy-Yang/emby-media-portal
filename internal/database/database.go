@@ -125,6 +125,10 @@ func createTables() error {
 		return err
 	}
 
+	if err := cleanupMalformedTrafficStats(db); err != nil {
+		return err
+	}
+
 	indexQueries := []string{
 		`CREATE INDEX IF NOT EXISTS idx_client_rules_match ON client_rules(match_type, match_value)`,
 		`CREATE INDEX IF NOT EXISTS idx_traffic_stats_user ON traffic_stats(user_id)`,
@@ -245,4 +249,103 @@ func tableHasColumn(db *sql.DB, tableName, columnName string) (bool, error) {
 	}
 
 	return false, rows.Err()
+}
+
+func cleanupMalformedTrafficStats(db *sql.DB) error {
+	rows, err := db.Query(`SELECT id, user_id, client_name, device_id FROM traffic_stats`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	type update struct {
+		id         int64
+		userID     sql.NullString
+		clientName sql.NullString
+		deviceID   sql.NullString
+	}
+
+	var updates []update
+	for rows.Next() {
+		var item update
+		if err := rows.Scan(&item.id, &item.userID, &item.clientName, &item.deviceID); err != nil {
+			return err
+		}
+
+		normalizedUserID := normalizeNullableHeaderValue(item.userID)
+		normalizedClientName := normalizeNullableHeaderValue(item.clientName)
+		normalizedDeviceID := normalizeNullableHeaderValue(item.deviceID)
+
+		if normalizedUserID == item.userID &&
+			normalizedClientName == item.clientName &&
+			normalizedDeviceID == item.deviceID {
+			continue
+		}
+
+		updates = append(updates, update{
+			id:         item.id,
+			userID:     normalizedUserID,
+			clientName: normalizedClientName,
+			deviceID:   normalizedDeviceID,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if len(updates) == 0 {
+		return nil
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.Prepare(`UPDATE traffic_stats SET user_id = ?, client_name = ?, device_id = ? WHERE id = ?`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for _, item := range updates {
+		if _, err := stmt.Exec(item.userID, item.clientName, item.deviceID, item.id); err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
+func normalizeNullableHeaderValue(value sql.NullString) sql.NullString {
+	if !value.Valid {
+		return value
+	}
+	normalized := normalizeEmbyHeaderValue(value.String)
+	if normalized == "" {
+		return sql.NullString{}
+	}
+	return sql.NullString{String: normalized, Valid: true}
+}
+
+func normalizeEmbyHeaderValue(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return ""
+	}
+
+	for {
+		normalized := strings.TrimSpace(value)
+		normalized = strings.TrimPrefix(normalized, `\"`)
+		normalized = strings.TrimPrefix(normalized, `"`)
+		normalized = strings.TrimSuffix(normalized, `"\`)
+		normalized = strings.TrimSuffix(normalized, `\"`)
+		normalized = strings.TrimSuffix(normalized, `"`)
+		normalized = strings.TrimSuffix(normalized, `\`)
+		normalized = strings.TrimSpace(normalized)
+		if normalized == value {
+			return normalized
+		}
+		value = normalized
+	}
 }

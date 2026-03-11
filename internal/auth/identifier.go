@@ -112,16 +112,19 @@ func (i *Identifier) IdentifyClient(r *http.Request) *ClientInfo {
 		r.Header.Get("X-Emby-Client"),
 		r.URL.Query().Get("Client"),
 	)
+	clientName = normalizeEmbyHeaderValue(clientName)
 	deviceID := firstNonEmpty(
 		authValues["DeviceId"],
 		r.Header.Get("X-Emby-Device-Id"),
 		r.URL.Query().Get("DeviceId"),
 	)
+	deviceID = normalizeEmbyHeaderValue(deviceID)
 	deviceName := firstNonEmpty(
 		authValues["Device"],
 		r.Header.Get("X-Emby-Device-Name"),
 		r.URL.Query().Get("Device"),
 	)
+	deviceName = normalizeEmbyHeaderValue(deviceName)
 	userAgent := strings.TrimSpace(r.UserAgent())
 	if clientName == "" {
 		clientName = detectClientNameFromUserAgent(userAgent)
@@ -159,34 +162,34 @@ func (i *Identifier) IdentifyClient(r *http.Request) *ClientInfo {
 func (i *Identifier) extractToken(r *http.Request) string {
 	// Check X-Emby-Token header
 	if token := r.Header.Get("X-Emby-Token"); token != "" {
-		return token
+		return normalizeEmbyHeaderValue(token)
 	}
 
 	if token := r.Header.Get("X-MediaBrowser-Token"); token != "" {
-		return token
+		return normalizeEmbyHeaderValue(token)
 	}
 
 	// Check URL parameter
 	if token := r.URL.Query().Get("X-Emby-Token"); token != "" {
-		return token
+		return normalizeEmbyHeaderValue(token)
 	}
 
 	if token := r.URL.Query().Get("api_key"); token != "" {
-		return token
+		return normalizeEmbyHeaderValue(token)
 	}
 
 	authValues := embyAuthorizationValues(r)
 	if token := authValues["Token"]; token != "" {
-		return token
+		return normalizeEmbyHeaderValue(token)
 	}
 
 	if token := authValues["ApiKey"]; token != "" {
-		return token
+		return normalizeEmbyHeaderValue(token)
 	}
 
 	// Check DeviceId as fallback
 	if deviceId := r.Header.Get("X-Emby-Device-Id"); deviceId != "" {
-		return deviceId
+		return normalizeEmbyHeaderValue(deviceId)
 	}
 
 	return ""
@@ -198,16 +201,16 @@ func (i *Identifier) extractUserID(r *http.Request) string {
 	}
 
 	if userID := strings.TrimSpace(r.Header.Get("X-Emby-User-Id")); userID != "" {
-		return userID
+		return normalizeEmbyHeaderValue(userID)
 	}
 
 	if userID := strings.TrimSpace(r.URL.Query().Get("UserId")); userID != "" {
-		return userID
+		return normalizeEmbyHeaderValue(userID)
 	}
 
 	authValues := embyAuthorizationValues(r)
 	if userID := strings.TrimSpace(authValues["UserId"]); userID != "" {
-		return userID
+		return normalizeEmbyHeaderValue(userID)
 	}
 
 	return ""
@@ -507,7 +510,7 @@ func parseEmbyAuthorization(header string) map[string]string {
 		}
 
 		key := strings.TrimSpace(kv[0])
-		value := strings.Trim(strings.TrimSpace(kv[1]), "\"")
+		value := normalizeEmbyHeaderValue(strings.Trim(strings.TrimSpace(kv[1]), "\""))
 		if key != "" {
 			values[key] = value
 		}
@@ -529,6 +532,28 @@ func embyAuthorizationValues(r *http.Request) map[string]string {
 	}
 
 	return map[string]string{}
+}
+
+func normalizeEmbyHeaderValue(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return ""
+	}
+
+	for {
+		normalized := strings.TrimSpace(value)
+		normalized = strings.TrimPrefix(normalized, `\"`)
+		normalized = strings.TrimPrefix(normalized, `"`)
+		normalized = strings.TrimSuffix(normalized, `"\`)
+		normalized = strings.TrimSuffix(normalized, `\"`)
+		normalized = strings.TrimSuffix(normalized, `"`)
+		normalized = strings.TrimSuffix(normalized, `\`)
+		normalized = strings.TrimSpace(normalized)
+		if normalized == value {
+			return normalized
+		}
+		value = normalized
+	}
 }
 
 func firstNonEmpty(values ...string) string {
