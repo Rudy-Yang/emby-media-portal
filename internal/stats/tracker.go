@@ -26,7 +26,6 @@ type TrafficRecord struct {
 	DeviceID    string
 	DeviceName  string
 	UserAgent   string
-	ClientIP    string
 	ServerID    string
 	RequestPath string
 	TrafficKind string
@@ -59,7 +58,6 @@ type TrafficEntry struct {
 	DeviceID    string `json:"device_id"`
 	DeviceName  string `json:"device_name"`
 	UserAgent   string `json:"user_agent"`
-	ClientIP    string `json:"client_ip"`
 	ServerID    string `json:"server_id"`
 	RequestPath string `json:"request_path"`
 	TrafficKind string `json:"traffic_kind"`
@@ -126,7 +124,7 @@ func NewTracker(flushInterval time.Duration) *Tracker {
 }
 
 // Record records traffic for a request
-func (t *Tracker) Record(userID, userName, clientID, clientName, deviceID, deviceName, userAgent, clientIP, serverID, requestPath, trafficKind string, bytesIn, bytesOut int64) {
+func (t *Tracker) Record(userID, userName, clientID, clientName, deviceID, deviceName, userAgent, serverID, requestPath, trafficKind string, bytesIn, bytesOut int64) {
 	if bytesIn == 0 && bytesOut == 0 {
 		return
 	}
@@ -140,7 +138,6 @@ func (t *Tracker) Record(userID, userName, clientID, clientName, deviceID, devic
 		DeviceID:    deviceID,
 		DeviceName:  deviceName,
 		UserAgent:   userAgent,
-		ClientIP:    clientIP,
 		ServerID:    serverID,
 		RequestPath: requestPath,
 		TrafficKind: trafficKind,
@@ -150,7 +147,7 @@ func (t *Tracker) Record(userID, userName, clientID, clientName, deviceID, devic
 	t.mu.Unlock()
 }
 
-func (t *Tracker) StartTransfer(userID, userName, clientID, clientName, deviceID, deviceName, userAgent, clientIP, serverID, requestPath, trafficKind string, bytesIn int64) string {
+func (t *Tracker) StartTransfer(userID, userName, clientID, clientName, deviceID, deviceName, userAgent, serverID, requestPath, trafficKind string, bytesIn int64) string {
 	if t == nil {
 		return ""
 	}
@@ -165,7 +162,6 @@ func (t *Tracker) StartTransfer(userID, userName, clientID, clientName, deviceID
 		DeviceID:    deviceID,
 		DeviceName:  deviceName,
 		UserAgent:   userAgent,
-		ClientIP:    clientIP,
 		ServerID:    serverID,
 		RequestPath: requestPath,
 		TrafficKind: trafficKind,
@@ -237,8 +233,8 @@ func (t *Tracker) flush() {
 
 	stmt, err := tx.Prepare(
 		`INSERT INTO traffic_stats
-		 (user_id, client_id, client_name, device_id, device_name, user_agent, client_ip, server_id, request_path, traffic_kind, bytes_in, bytes_out)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		 (user_id, client_id, client_name, device_id, device_name, user_agent, server_id, request_path, traffic_kind, bytes_in, bytes_out)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 	)
 	if err != nil {
 		tx.Rollback()
@@ -247,7 +243,7 @@ func (t *Tracker) flush() {
 	defer stmt.Close()
 
 	for _, r := range records {
-		stmt.Exec(r.UserID, r.ClientID, r.ClientName, r.DeviceID, r.DeviceName, r.UserAgent, r.ClientIP, r.ServerID, r.RequestPath, r.TrafficKind, r.BytesIn, r.BytesOut)
+		stmt.Exec(r.UserID, r.ClientID, r.ClientName, r.DeviceID, r.DeviceName, r.UserAgent, r.ServerID, r.RequestPath, r.TrafficKind, r.BytesIn, r.BytesOut)
 	}
 
 	tx.Commit()
@@ -755,7 +751,6 @@ func ListTrafficEntries(since time.Time, page, pageSize int, filters TrafficEntr
 		     COALESCE(t.device_id, ''),
 		     COALESCE(t.device_name, ''),
 		     COALESCE(t.user_agent, ''),
-		     COALESCE(t.client_ip, ''),
 		     COALESCE(t.server_id, ''),
 		     COALESCE(t.request_path, ''),
 		     COALESCE(t.traffic_kind, ''),
@@ -786,7 +781,6 @@ func ListTrafficEntries(since time.Time, page, pageSize int, filters TrafficEntr
 			&entry.DeviceID,
 			&entry.DeviceName,
 			&entry.UserAgent,
-			&entry.ClientIP,
 			&entry.ServerID,
 			&entry.RequestPath,
 			&entry.TrafficKind,
@@ -821,13 +815,12 @@ func buildTrafficEntryFilters(since time.Time, filters TrafficEntryFilters) (str
 			OR COALESCE(t.device_id, '') LIKE ?
 			OR COALESCE(t.device_name, '') LIKE ?
 			OR COALESCE(t.user_agent, '') LIKE ?
-			OR COALESCE(t.client_ip, '') LIKE ?
 			OR COALESCE(t.server_id, '') LIKE ?
 			OR COALESCE(t.request_path, '') LIKE ?
 			OR COALESCE(t.traffic_kind, '') LIKE ?
 			OR COALESCE(t.timestamp, '') LIKE ?)`,
 		)
-		for i := 0; i < 12; i++ {
+		for i := 0; i < 11; i++ {
 			args = append(args, pattern)
 		}
 	}

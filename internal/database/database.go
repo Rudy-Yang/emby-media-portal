@@ -90,21 +90,12 @@ func createTables() error {
 			device_id TEXT,
 			device_name TEXT,
 			user_agent TEXT,
-			client_ip TEXT,
 			server_id TEXT,
 			request_path TEXT,
 			traffic_kind TEXT DEFAULT '',
 			bytes_in INTEGER DEFAULT 0,
 			bytes_out INTEGER DEFAULT 0,
 			timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-		)`,
-		`CREATE TABLE IF NOT EXISTS ip_geo_cache (
-			ip TEXT PRIMARY KEY,
-			country_code TEXT,
-			country_name TEXT,
-			region_name TEXT,
-			city_name TEXT,
-			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		)`,
 	}
 
@@ -120,7 +111,6 @@ func createTables() error {
 		`ALTER TABLE traffic_stats ADD COLUMN device_id TEXT`,
 		`ALTER TABLE traffic_stats ADD COLUMN device_name TEXT`,
 		`ALTER TABLE traffic_stats ADD COLUMN user_agent TEXT`,
-		`ALTER TABLE traffic_stats ADD COLUMN client_ip TEXT`,
 		`ALTER TABLE traffic_stats ADD COLUMN request_path TEXT`,
 		`ALTER TABLE traffic_stats ADD COLUMN traffic_kind TEXT DEFAULT ''`,
 	}
@@ -131,11 +121,14 @@ func createTables() error {
 		}
 	}
 
+	if err := cleanupDeprecatedSchema(db); err != nil {
+		return err
+	}
+
 	indexQueries := []string{
 		`CREATE INDEX IF NOT EXISTS idx_client_rules_match ON client_rules(match_type, match_value)`,
 		`CREATE INDEX IF NOT EXISTS idx_traffic_stats_user ON traffic_stats(user_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_traffic_stats_client ON traffic_stats(client_id)`,
-		`CREATE INDEX IF NOT EXISTS idx_traffic_stats_client_ip ON traffic_stats(client_ip)`,
 		`CREATE INDEX IF NOT EXISTS idx_traffic_stats_timestamp ON traffic_stats(timestamp)`,
 	}
 
@@ -171,4 +164,85 @@ func isDuplicateColumnError(err error) bool {
 	}
 	message := strings.ToLower(err.Error())
 	return strings.Contains(message, "duplicate column name")
+}
+
+func cleanupDeprecatedSchema(db *sql.DB) error {
+	if _, err := db.Exec(`DROP TABLE IF EXISTS ip_geo_cache`); err != nil {
+		return err
+	}
+
+	hasClientIP, err := tableHasColumn(db, "traffic_stats", "client_ip")
+	if err != nil {
+		return err
+	}
+	if !hasClientIP {
+		return nil
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	statements := []string{
+		`CREATE TABLE traffic_stats_new (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id TEXT,
+			client_id TEXT,
+			client_name TEXT,
+			device_id TEXT,
+			device_name TEXT,
+			user_agent TEXT,
+			server_id TEXT,
+			request_path TEXT,
+			traffic_kind TEXT DEFAULT '',
+			bytes_in INTEGER DEFAULT 0,
+			bytes_out INTEGER DEFAULT 0,
+			timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`INSERT INTO traffic_stats_new (
+			id, user_id, client_id, client_name, device_id, device_name, user_agent, server_id, request_path, traffic_kind, bytes_in, bytes_out, timestamp
+		)
+		SELECT
+			id, user_id, client_id, client_name, device_id, device_name, user_agent, server_id, request_path, traffic_kind, bytes_in, bytes_out, timestamp
+		FROM traffic_stats`,
+		`DROP TABLE traffic_stats`,
+		`ALTER TABLE traffic_stats_new RENAME TO traffic_stats`,
+	}
+
+	for _, statement := range statements {
+		if _, err := tx.Exec(statement); err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
+func tableHasColumn(db *sql.DB, tableName, columnName string) (bool, error) {
+	rows, err := db.Query(`PRAGMA table_info(` + tableName + `)`)
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var (
+			cid        int
+			name       string
+			columnType string
+			notNull    int
+			defaultVal sql.NullString
+			pk         int
+		)
+		if err := rows.Scan(&cid, &name, &columnType, &notNull, &defaultVal, &pk); err != nil {
+			return false, err
+		}
+		if strings.EqualFold(name, columnName) {
+			return true, nil
+		}
+	}
+
+	return false, rows.Err()
 }
